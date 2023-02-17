@@ -1,0 +1,42 @@
+[plate]
+# Labels for plate rows and columns. Can be specified as arrays or as
+# integers specifying the number of rows and columns for the plate.
+
+# Examples rows/column specifications
+# rows = ["A", "B", "C", "D", "E", "F", "G", "H"]
+# rows = 8 
+# columns = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+# columns = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"]
+# columns = "ABCDEFGHIJKL"
+# ...
+
+rows = "ABCDEFGH" 
+columns = 12
+
+[QC]
+# These config parameters determine how QC samples are distributed on the plate. 
+# 
+# QC round = a sequence of QC samples included before and/or after a sequence of analytical (specimen) samples
+start_with_QC_round = true
+run_QC_after_n_specimens = 11
+
+    [QC.names] # types of QC samples we will use
+    #
+    EC = "EC: External Control (matrix)"
+    PB = "PB: Paper Blank"
+    PO = "PO: Pooled specimens"
+
+    [QC.scheme] # when and how often to use QC samples in QC rounds
+    #
+    # every_n_round = how often should we include the QC sample in a QC round?
+    # introduce_in_round = when should the QC sample be run for the first time? 0 = all rounds.
+    # position_in_round = which order should the QC sample have when it is included in a QC run? 
+
+    EC = {every_n_rounds = 1, introduce_in_round = 0, position_in_round = 2}
+    PB = {every_n_rounds = 2, introduce_in_round = 1, position_in_round = 1}
+    PO = {every_n_rounds = 2, introduce_in_round = 2, position_in_round = 1}
+
+[plot]
+fig_size = [11.69, 8.27] # A4 in inches
+matplotlib_style = 'bmh'
+empty_well_RGB = [1,1,1] # = white
