@@ -446,6 +446,9 @@ class Plate:
             if write_columns is not None:
                 dropcolumns = [col for col in batch.columns if col not in write_columns]
                 batch = batch.drop(columns=dropcolumns)
+                logger.debug("Dropping columns from dataframe:")
+                for col in dropcolumns:
+                    logger.debug(f"\t{col}")
             
             if fileformat == "tsv" or ("tab" in fileformat): 
                 fext = "tsv"
