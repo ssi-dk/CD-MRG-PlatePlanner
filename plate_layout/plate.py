@@ -448,12 +448,12 @@ class Plate:
                 self.batches_df[id].to_excel(filepath)
 
 
-    def plot_layout(self):
+    def plot_layout(self, *args, **kwargs):
         
         well_labels = self.sample_order   
         well_color_data = [val.split('_')[0] for val in well_labels ]
         
-        self.plateplot(well_labels, well_color_data, self.columns)
+        self.plateplot(well_labels, well_color_data, self.columns, **kwargs)
         
         
     def plot_batch(self, batch_index, 
