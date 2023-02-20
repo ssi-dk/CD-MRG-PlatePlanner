@@ -456,18 +456,24 @@ class Plate:
         self.plateplot(well_labels, well_color_data, self.columns)
         
         
-    def plot_batch(self, batch_index, well_label_column, well_color_column):
+    def plot_batch(self, batch_index, 
+                   well_label_column, well_color_column, 
+                   label_dtype=None,
+                   *args, **kwargs):
         
         title_str = f"Batch {batch_index + 1}: {well_label_column} colored by {well_color_column}" 
+
+        
     
-        self.plateplot(self.batches_df[batch_index][well_label_column],
+        self.plateplot(self.batches_df[batch_index][well_label_column].astype(label_dtype),
                        self.batches_df[batch_index][well_color_column],
-                       title_str = title_str)
+                       title_str = title_str,
+                       **kwargs)
         
         
     def plateplot(self, well_label_data: list, well_color_data: list,
                   savefig = False,  
-                font_size: int = 8,
+                fontsize: int = 8,
                 rotation: int = 0,
                 colormap: str = "tab20",
                 NaN_color: tuple = (1,1,1),
@@ -533,14 +539,14 @@ class Plate:
                 info_str = ""
                 col = NaN_color
             else:     
-                info_str = well_label_data[well_count-1]                
+                info_str = f"{well_label_data[well_count-1]}"                
                 col = RGB_per_well[well_count-1]
             
             ax.annotate(info_str, (x_i, y_i), 
                         horizontalalignment='center', 
                         verticalalignment='center',
                         rotation=rotation,
-                        fontsize=font_size)
+                        fontsize=fontsize)
         
             ax.scatter(x_i, y_i, 
                     bubble_size,color=col, 

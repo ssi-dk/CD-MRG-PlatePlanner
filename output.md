@@ -1,24 +1,8 @@
-# plate_layout
+```python
+%load_ext autoreload
+%autoreload 2
 
-[![PyPI - Version](https://img.shields.io/pypi/v/plate-layout.svg)](https://pypi.org/project/plate-layout)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/plate-layout.svg)](https://pypi.org/project/plate-layout)
-
------
-
-**Table of Contents**
-
-- [Installation](#installation)
-- [License](#license)
-
-## Installation
-
-```console
-pip install plate-layout
 ```
-
-## License
-
-`plate-layout` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
 
 
 ```python
@@ -109,7 +93,7 @@ P.plot_layout()
 
 
     
-![png](figures/output_5_2.png)
+![png](output_files/output_5_2.png)
     
 
 
@@ -236,7 +220,7 @@ Pfig = P.plot_batch(0, "specimen_ID", "organ", label_dtype="Int64")
 
 
     
-![png](figures/output_11_1.png)
+![png](output_files/output_11_1.png)
     
 
 
@@ -251,7 +235,11 @@ Pfig = P.plot_batch(0, "barcode", "organ", label_dtype="Int64", rotation=45, fon
 
 
     
-![png](figures/output_12_1.png)
+![png](output_files/output_12_1.png)
     
 
 
+
+```python
+
+```
