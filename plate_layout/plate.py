@@ -426,9 +426,10 @@ class Plate:
         logger.info(f"Finished distributing samples onto plates; {self.N_batches} batches created.")
 
     def to_file(self, 
-                fileformat: str = None,
+                fileformat: str = "csv",
                 batch_index: list = None,
-                folder_path: str = None):
+                folder_path: str = None,
+                write_columns: list = None):
         
         if batch_index is None:
             batch_index = range(0, len(self.batches_df))
@@ -440,17 +441,23 @@ class Plate:
             filename = f"batch_{id+1}."
             filepath = os.path.join(folder_path, filename)
             
-            if fileformat == "tsv" or "tab" in fileformat: 
+            batch = self.batches_df[id]
+            
+            if write_columns is not None:
+                dropcolumns = [col for col in batch.columns if col not in write_columns]
+                batch = batch.drop(columns=dropcolumns)
+            
+            if fileformat == "tsv" or ("tab" in fileformat): 
                 fext = "tsv"
-                self.batches_df[id].to_csv(filepath+fext, sep="\t")
+                batch.to_csv(filepath+fext, sep="\t")
                 
-            elif fileformat == "csv" or "comma" in fileformat:
+            elif fileformat == "csv" or ("comma" in fileformat):
                 fext = "csv"
-                self.batches_df[id].to_csv(filepath+fext, sep="\t")
+                batch.to_csv(filepath+fext)
                 
             else:
                 fext = "xlxs"
-                self.batches_df[id].to_excel(filepath+fext)
+                batch.to_excel(filepath+fext)
                 
             logger.info(f"Saving batch {id} to {filepath+fext} ")
 
