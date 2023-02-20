@@ -94,9 +94,9 @@ class Plate:
     def create_labels(rowcol_specification):
          
         if isinstance(rowcol_specification, str):
-            label =  list(rowcol_specification)
+            label =  list(rowcol_specification)[::-1]
         elif isinstance(rowcol_specification, int):
-            label = list(range(0, rowcol_specification))
+            label = list(range(0, rowcol_specification))[::-1]
         elif isinstance(rowcol_specification, list): 
             label =  rowcol_specification
         else:
