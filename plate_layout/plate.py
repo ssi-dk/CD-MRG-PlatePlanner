@@ -423,22 +423,22 @@ class Plate:
         # concatenate all DFs to one long DF
         self.all_batches_df = pd.concat(batches_df_list).reset_index()
         
-        logger.info(f"Finished distributing samples onto plates; {batch_count} batches created.")
+        logger.info(f"Finished distributing samples onto plates; {self.N_batches} batches created.")
 
     def to_file(self, 
                 fileformat: str = None,
                 batch_index: list = None,
-                save_path: str = None):
+                folder_path: str = None):
         
         if batch_index is None:
             batch_index = range(0, len(self.batches_df))
             
-        if save_path is None:
-            save_path = os.getcwd()
+        if folder_path is None:
+            folder_path = os.getcwd()
         
         for id in batch_index:
             filename = f"batch_{id+1}.txt"
-            filepath = os.path.join(save_path, filename)
+            filepath = os.path.join(folder_path, filename)
             
             if fileformat == "tsv" or "tab" in fileformat: 
                 self.batches_df[id].to_csv(filepath, sep="\t")
