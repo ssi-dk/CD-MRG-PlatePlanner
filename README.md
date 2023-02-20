@@ -9,6 +9,7 @@
 
 - [Installation](#installation)
 - [License](#license)
+- [Example](#example)
 
 ## Installation
 
@@ -20,6 +21,7 @@ pip install plate-layout
 
 `plate-layout` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
 
+## Example
 
 ```python
 
@@ -31,7 +33,7 @@ import logging
 pl.logger.setLevel(logging.INFO)
 ```
 
-## Create a plate layout 
+### Create a plate layout 
 Create plate design by specifying the path to a config file directly when instantiating the class, 
 
 
@@ -113,7 +115,7 @@ P.plot_layout()
     
 
 
-## Load study data and randomize order 
+### Load study data and randomize order 
 
 
 ```python
@@ -125,22 +127,6 @@ study.head()
 ```
 
 
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
