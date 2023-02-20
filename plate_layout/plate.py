@@ -448,18 +448,18 @@ class Plate:
                 self.batches_df[id].to_excel(filepath)
 
 
-    def plot_layout(self, *args, **kwargs):
+    def plot_layout(self, **kwargs):
         
         well_labels = self.sample_order   
         well_color_data = [val.split('_')[0] for val in well_labels ]
         
-        self.plateplot(well_labels, well_color_data, self.columns, **kwargs)
+        self.plateplot(well_labels, well_color_data, **kwargs)
         
         
     def plot_batch(self, batch_index, 
                    well_label_column, well_color_column, 
                    label_dtype=None,
-                   *args, **kwargs):
+                   **kwargs):
         
         title_str = f"Batch {batch_index + 1}: {well_label_column} colored by {well_color_column}" 
 
@@ -472,13 +472,14 @@ class Plate:
         
         
     def plateplot(self, well_label_data: list, well_color_data: list,
-                  savefig = False,  
                 fontsize: int = 8,
                 rotation: int = 0,
                 colormap: str = "tab20",
                 NaN_color: tuple = (1,1,1),
                 step = 10,
-                title_str = ''
+                title_str = '',
+                alpha_val = 0.7,
+                well_size = 1200
                 ):
 
         # DEFINE COLORS TO USE
@@ -512,9 +513,8 @@ class Plate:
 
         # PLOT
         # variables for scatter plot
-        bubble_size = 1200
+        bubble_size = well_size
         grid_col = (1,1,1)
-        alpha_val = 0.7
         edge_color = (0.5, 0.5, 0.5)
 
         # Style and size
