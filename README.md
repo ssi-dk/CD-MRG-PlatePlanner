@@ -223,6 +223,19 @@ P.create_batches(study_permuted)
 
 
 
+### Export batch lists to file
+You can export batch lists using the `to_file` method and specify desired file format and which columns to export. 
+
+
+```python
+columns = ["well_name", "sample_name", "barcode"]
+
+for i,batch in enumerate(P.batches_df):
+    P.to_file(fileformat="csv", folder_path=f"data/", write_columns=columns)
+```
+
+### Plot plate layouts
+
 ```python
 Pfig = P.plot_batch(0, "specimen_ID", "organ", label_dtype="Int64")
 ```
