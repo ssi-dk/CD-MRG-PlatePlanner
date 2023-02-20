@@ -1,0 +1,20 @@
+name: general-ds
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python==3.9
+  - pandas
+  - ipython
+  - ipykernel
+  - scikit-learn
+  - openpyxl
+  - matplotlib
+  - seaborn
+  - nbconvert
+  - autopep8
+  - hatch
+  - pytest
+  - faker
+prefix: /home/filip/anaconda3/envs/general-ds
