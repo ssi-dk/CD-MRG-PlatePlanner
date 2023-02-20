@@ -4,7 +4,7 @@ import itertools, os, tomli, glob
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-from pyplate_logger import logger
+from .logger import logger
 
 np.set_printoptions(threshold=np.inf)
 np.set_printoptions(linewidth=np.inf)
@@ -29,7 +29,17 @@ class Plate:
     
     
     """
-
+    
+    rows: list = []
+    columns: list = []
+    
+    well_coordinates: list = []
+    well_names: list = []
+    
+    plate_well_names: object = np.empty(0) # -> numpy array 
+    plate_well_coordinates: object = np.empty(0) # -> numpy array 
+    
+    
     ##def __init__(self, annotation_data: list,color_data: list,rows=list('ABCDEFGH'),columns=list(range(0, 12))):
     def __init__(self, config_file: str = None) -> None:    
         """_summary_
@@ -38,33 +48,24 @@ class Plate:
         
         """
         
-        self.config_file = config_file
+        if config_file is not None:
         
-        self.import_config_file()
-
-        self.create_plate()
-        
-        self.create_layout()
+            self.load_config_file(config_file)
+            self.create_layout()
+           
+        else:
+            logger.info("Run method 'load_config_file(<path to config toml file)' to define the plate setup")
 
         # create layout template for specimen with/without QC samples
         
+    def create_layout(self):
+        self.build_coordinate_system()
+        self.create_layout_template()
+    
+    def load_config_file(self, config_file: str = None):
         
-        # self._step = 10
-
-        # # DEFINE GRID FOR WELLS
-        # # define the lower and upper limits
-        # minX, maxX, minY, maxY = 0, self._n_columns*self._step, 0, self._n_rows*self._step
-
-        # # create one-dimensional arrays for x and y
-        # x = np.arange(minX, maxX, self._step)
-        # y = np.arange(minY, maxY, self._step)
-
-        # # create a mesh based on these arrays
-        # self._Xgrid, self._Ygrid = np.meshgrid(x, y)
-        
-    def import_config_file(self):
         # READ CONFIG FILE
-        if self.config_file is None: 
+        if config_file is None: 
             
             logger.warning("No config file specified. Trying to find a toml file in current folder.")
             
@@ -74,48 +75,54 @@ class Plate:
                 config_file = config_file_search[0]
                 logger.info(f"Using toml file '{config_file}'")
             # <- end if
-        # <- end if
-                
+        # <- end if     
         
         try:
             with open(config_file, mode="rb") as fp:
+                
                 self.config = tomli.load(fp)
             
+            logger.info(f"Successfully loaded config file {config_file}")
+            logger.debug(f"{self.config}")
+            
         except FileNotFoundError:
-            logger.error(f"Could not find config file {config_file}")
-            raise RuntimeError
-        # <- end try
-        
+            logger.error(f"Could not find/open config file {config_file}")
 
-    def create_plate(self):
+        # <- end try
+    
+    @staticmethod
+    def create_labels(rowcol_specification):
+         
+        if isinstance(rowcol_specification, str):
+            label =  list(rowcol_specification)
+        elif isinstance(rowcol_specification, int):
+            label = list(range(0, rowcol_specification))
+        elif isinstance(rowcol_specification, list): 
+            label =  rowcol_specification
+        else:
+            label = None
+            
+        return label
+    
+
+    def build_coordinate_system(self):
         
         # SET WELL LABELS AND DIMENSIONS
         
-        rows = self.config['plate']['rows']
-        if isinstance(rows, str):
-            self.rows = list(rows)
-        elif isinstance(rows, int):
-            self.rows = list(range(0, rows))
-        elif isinstance(rows, list): 
-            self.rows = rows
-        else:
-            logger.error("Unknown format for plate row labels")
-            raise RuntimeError
-        # <- end if
+        self.rows = Plate.create_labels(self.config['plate']['rows'])
         
-        columns = self.config['plate']['columns']
-        if isinstance(columns, str):
-            self.columns = list(columns)
-        elif isinstance(columns, int):
-            self.columns = list(range(0, columns))
-        elif isinstance(columns, list): 
-            self.columns = columns
-        else:
-            logger.error("Unknown format for plate column labels")
+        if self.rows is None: 
+            logger.error("Unknown format for plate row labels in config file")
             raise RuntimeError
-        # <- end if
         
-        # Create coordinate system - use zero indexing to conform with Python (*sigh) 
+        self.columns = Plate.create_labels(self.config['plate']['columns'])
+        
+        if self.columns is None: 
+            logger.error("Unknown format for plate column labels in config file")
+            raise RuntimeError
+        
+        
+        # Create coordinate system - use zero-indexing to conform with Python indexing 
         
         self._n_rows = len(self.rows)
         self._n_columns = len(self.columns)
@@ -141,7 +148,7 @@ class Plate:
         logger.info(f"Created a plate with {self._n_wells} wells: \n {self.plate_well_names}")
         
 
-    def create_layout(self):
+    def create_layout_template(self):
         """_summary_
 
         """
@@ -188,16 +195,16 @@ class Plate:
             
         # <- end for loop
         
-        logger.info(f"{len(QC_unique_seq)} unique QC sequences defined: ")
+        logger.debug(f"{len(QC_unique_seq)} unique QC sequences defined: ")
         for i, qc_seq in enumerate(QC_unique_seq):
-            logger.info(f"\t{i+1}) {qc_seq}")
+            logger.debug(f"\t{i+1}) {qc_seq}")
             
         self._QC_unique_seq = QC_unique_seq
 
         #Number of QC rounds per plate
         N_QC_rounds = self._n_wells // (N_QC_samples_per_round + N_specimens_between_QC - 1)
 
-        logger.info(f"Assigning {N_QC_rounds} QC rounds per plate")
+        logger.debug(f"Assigning {N_QC_rounds} QC rounds per plate")
 
         # Generate QC sample sequence for each QC round
         qc_rounds = 0
@@ -206,7 +213,7 @@ class Plate:
             for seq in QC_unique_seq:
                 qc_rounds += 1
                 QC_seq_rounds.append(seq)
-                logger.info(f"\t Round {qc_rounds}: {seq}")
+                logger.debug(f"\t Round {qc_rounds}: {seq}")
 
             qc_rounds = len(QC_seq_rounds)
 
@@ -319,7 +326,6 @@ class Plate:
 
         for i, well in enumerate(self.well_coordinates):
             r, c = well[0], well[1]
-            str_vals = str()
             plate_array[r][c] = data[i]
 
         return np.flipud(plate_array)
@@ -382,7 +388,7 @@ class Plate:
                 sample_type, sample_number = sample.split("_")
                 
                 if sample_type == "S" and (int(sample_number) > N_specimens_left):
-                    print(f"Finished distributing specimen samples to plate wells. Last specimen is {self.sample_order[i-1]}")
+                    logger.debug(f"Finished distributing specimen samples to plate wells. Last specimen is {self.sample_order[i-1]}")
                     break
                                 
                 batch['well_name'].append( str().join(self.well_names[i]) )
@@ -417,6 +423,7 @@ class Plate:
         # concatenate all DFs to one long DF
         self.all_batches_df = pd.concat(batches_df_list).reset_index()
         
+        logger.info(f"Finished distributing samples onto plates; {batch_count} batches created.")
 
     def to_file(self, 
                 fileformat: str = None,
@@ -469,7 +476,7 @@ class Plate:
                 ):
 
         # DEFINE COLORS TO USE
-        levels = np.unique(well_color_data)    
+        levels = pd.unique(well_color_data)    
         print(f"Number of colors to use: {len(levels)}")
         
         RGB_colors = {}
@@ -598,3 +605,7 @@ class Plate:
         ax.set_axisbelow(True)
                 
         return fig
+    
+    def __str__(self) -> str:
+        return f"{self.plate_sample_order}"
+    
