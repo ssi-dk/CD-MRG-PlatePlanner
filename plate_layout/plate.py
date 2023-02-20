@@ -91,12 +91,14 @@ class Plate:
         # <- end try
     
     @staticmethod
-    def create_labels(rowcol_specification):
+    def create_labels(rowcol_specification, flip_order:bool=False):
          
+        flipper = -1 if flip_order else  1
+        
         if isinstance(rowcol_specification, str):
-            label =  list(rowcol_specification)[::-1]
+            label =  list(rowcol_specification)[::flipper]
         elif isinstance(rowcol_specification, int):
-            label = list(range(0, rowcol_specification))[::-1]
+            label = list(range(0, rowcol_specification))[::flipper]
         elif isinstance(rowcol_specification, list): 
             label =  rowcol_specification
         else:
@@ -109,7 +111,7 @@ class Plate:
         
         # SET WELL LABELS AND DIMENSIONS
         
-        self.rows = Plate.create_labels(self.config['plate']['rows'])
+        self.rows = Plate.create_labels(self.config['plate']['rows'], flip_order=True)
         
         if self.rows is None: 
             logger.error("Unknown format for plate row labels in config file")
