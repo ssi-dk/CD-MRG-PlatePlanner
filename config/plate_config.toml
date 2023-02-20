@@ -36,7 +36,9 @@ run_QC_after_n_specimens = 11
     PB = {every_n_rounds = 2, introduce_in_round = 1, position_in_round = 1}
     PO = {every_n_rounds = 2, introduce_in_round = 2, position_in_round = 1}
 
-[plot]
-fig_size = [11.69, 8.27] # A4 in inches
-matplotlib_style = 'bmh'
-empty_well_RGB = [1,1,1] # = white
+
+# Not sure if this is the best way to interface plotting ...
+#[plot]
+#fig_size = [11.69, 8.27] # A4 in inches
+#matplotlib_style = 'bmh'
+#empty_well_RGB = [1,1,1] # = white
