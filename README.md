@@ -234,6 +234,20 @@ for i,batch in enumerate(P.batches_df):
     P.to_file(fileformat="csv", folder_path=f"data/", write_columns=columns)
 ```
 
+
+    [    INFO] --- Saving batch 0 to data/batch_1.csv 
+    [    INFO] --- Saving batch 1 to data/batch_2.csv 
+    [    INFO] --- Saving batch 2 to data/batch_3.csv 
+    [    INFO] --- Saving batch 3 to data/batch_4.csv 
+    [    INFO] --- Saving batch 4 to data/batch_5.csv 
+    [    INFO] --- Saving batch 5 to data/batch_6.csv 
+    [    INFO] --- Saving batch 6 to data/batch_7.csv 
+    [    INFO] --- Saving batch 7 to data/batch_8.csv 
+    [    INFO] --- Saving batch 8 to data/batch_9.csv
+    ...
+
+1
+
 ### Plot plate layouts
 
 ```python
