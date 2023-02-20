@@ -246,7 +246,6 @@ for i,batch in enumerate(P.batches_df):
     [    INFO] --- Saving batch 8 to data/batch_9.csv
     ...
 
-1
 
 ### Plot plate layouts
 
