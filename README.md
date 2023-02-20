@@ -21,7 +21,17 @@ pip install plate-layout
 
 `plate-layout` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
 
+### TODO
+- Turn into package using hatch
+- Write a test suite
+- Describe the toml config file in more detail
+- Add python script and a main function for CLI usage ...
+
 ## Example
+
+### Defining the plate type and quality control setup
+The plate dimensions and (optional) quality control layouts are are defined in a toml file; see `plate_config.toml' in the config folder for an example. 
+
 
 ```python
 
