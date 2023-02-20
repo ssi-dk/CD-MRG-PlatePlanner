@@ -111,7 +111,7 @@ class Plate:
         
         # SET WELL LABELS AND DIMENSIONS
         
-        self.rows = Plate.create_labels(self.config['plate']['rows'], flip_order=True)
+        self.rows = Plate.create_labels(self.config['plate']['rows'], flip_order=False)
         
         if self.rows is None: 
             logger.error("Unknown format for plate row labels in config file")
@@ -619,7 +619,7 @@ class Plate:
 
         # Y axis
         ax.set_yticks(y)
-        ax.set_yticklabels(self.rows)
+        ax.set_yticklabels(self.rows[::-1])
         ax.yaxis.grid(color=grid_col, linestyle='dashed', linewidth=1)
         ax.set_ylim(-1*y.max()*0.07,y.max()*1.07)
 
