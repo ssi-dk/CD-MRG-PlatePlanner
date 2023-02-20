@@ -258,7 +258,7 @@ Pfig = P.plot_batch(0, "specimen_ID", "organ", label_dtype="Int64")
 
 
     
-![png](figures/output_11_1.png)
+![png](figures/output_13_1.png)
     
 
 
@@ -273,7 +273,7 @@ Pfig = P.plot_batch(0, "barcode", "organ", label_dtype="Int64", rotation=45, fon
 
 
     
-![png](figures/output_12_1.png)
+![png](figures/output_14_1.png)
     
 
 
