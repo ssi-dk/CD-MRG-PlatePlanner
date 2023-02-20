@@ -437,15 +437,22 @@ class Plate:
             folder_path = os.getcwd()
         
         for id in batch_index:
-            filename = f"batch_{id+1}.txt"
+            filename = f"batch_{id+1}."
             filepath = os.path.join(folder_path, filename)
             
             if fileformat == "tsv" or "tab" in fileformat: 
-                self.batches_df[id].to_csv(filepath, sep="\t")
+                fext = "tsv"
+                self.batches_df[id].to_csv(filepath+fext, sep="\t")
+                
             elif fileformat == "csv" or "comma" in fileformat:
-                self.batches_df[id].to_csv(filepath, sep="\t")
+                fext = "csv"
+                self.batches_df[id].to_csv(filepath+fext, sep="\t")
+                
             else:
-                self.batches_df[id].to_excel(filepath)
+                fext = "xlxs"
+                self.batches_df[id].to_excel(filepath+fext)
+                
+            logger.info(f"Saving batch {id} to {filepath+fext} ")
 
 
     def plot_layout(self, **kwargs):
