@@ -4,16 +4,45 @@ import itertools, os, tomli, glob
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
+import string
 from .logger import logger
 
 np.set_printoptions(threshold=np.inf)
 np.set_printoptions(linewidth=np.inf)
-                    
+             
+       
+
+class Well:
+    """
+    A class to represent a well in a multiwell plate. 
+    """
+    name : str
+    coordinate : tuple
+    plate_id : int
+    metadata : dict
+    
+    def __init__(self, name, 
+                 coordinate, 
+                 index = None,
+                 plate_id = None,
+                 metadata = None) -> None:
+        
+        self.name = name
+        self.coordinate = coordinate
+        self.indexd = index
+        self.plate_id = plate_id
+        self.metadata = metadata
+        
+    def __str__(self) -> str:
+        pass
+    
+    def __repr__(self) -> str:
+        pass
 
 class Plate:
     
     """_summary_
-    A class to represent a multiwell plate often used in scientific research. 
+    A class to represent a multiwell plate. 
     
     Attributes
     
@@ -32,6 +61,9 @@ class Plate:
     
     rows: list = []
     columns: list = []
+    wells: list = [] # list of well objects
+    index_coordinates: list = [] # list of tuples with a pair of ints (row, column)
+    coordinates: list = [] # list of strings for canonical naming of plate coordnates, i.e A1, A2, A3, ..., B1, B2, etc
     
     well_coordinates: list = []
     well_names: list = []
@@ -41,22 +73,75 @@ class Plate:
     
     
     ##def __init__(self, annotation_data: list,color_data: list,rows=list('ABCDEFGH'),columns=list(range(0, 12))):
-    def __init__(self, config_file: str = None) -> None:    
+    def __init__(self, plate_id = 1, *args, **kwargs) -> None:    
         """_summary_
         
         Constructs all the necessary attributes for the Plate object, given the specifications in the plate.toml file
         
         """
+        self.plate_id = plate_id
         
-        if config_file is not None:
+        if args:
+            rows = args[0][0]
+            columns = args[0][1]
         
-            self.load_config_file(config_file)
-            self.create_layout()
-           
-        else:
-            logger.info("Run method 'load_config_file(<path to config toml file)' to define the plate setup")
-
-        # create layout template for specimen with/without QC samples
+        if kwargs:
+            rows = kwargs['rows']
+            columns = kwargs['columns']
+            
+        self.rows = list(range(0,rows))
+        self.columns = list(range(0,columns))
+        
+        self.create_index_coordinates()
+        
+        
+        # # create well names from plate row and column labels
+        # self.well_names = list(itertools.product(
+        #                         [str(val) for val in self.rows],
+        #                         [str(val) for val in self.columns]
+        #                         )
+        #                        )
+        
+    def create_index_coordinates(self):
+        # count from left to right, starting at well in top left
+        self.index_coordinates = list(itertools.product(
+                                        range(len(self.rows)-1, -1, -1),
+                                        range(0, len(self.columns))
+                                        )
+                                      )
+        
+    def create_coordinates(self):
+        pass
+    
+    def define_wells(self):
+        
+        for i, index_crd, crd in enumerate(zip(self.index_coordinates, self.coordinates)):
+            self.wells.append(
+                Well(coordinate=crd, 
+                     index=i, 
+                     plate_id=self.plate_id)
+            )
+            
+          
+    def __len__(self):
+        # TODO
+        pass
+    
+    def __contains__(self):
+        # TODO
+        pass
+    
+    def __getitem__(self, coordinate):
+        # TODO
+        pass
+        
+    def __setitem__(self, coordinate, well):
+        # TODO
+        pass
+    
+    def __delitem__(self):
+        # TODO
+        pass
         
     def create_layout(self):
         self.build_coordinate_system()
