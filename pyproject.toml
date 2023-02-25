@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "plate-layout"
-description = ''
+description = 'A tool to create and visualize sample layouts for multiwell plates.'
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
@@ -22,8 +22,10 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "numpy>=1.24",
-  "pandas>=1.5",
+  "numpy",
+  "pandas",
+  "tomli",
+  "matplotlib"
   ]
 
 dynamic = ["version"]
@@ -61,3 +63,9 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
+
+# [publish.index.repos.test]
+# url = "https://test.pypi.org/legacy/"
+# user = "__token__"
+# auth = "pypi-<SECRET>"
+# ca-cert = "/path/to/ca-bundle.crt"
