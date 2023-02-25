@@ -21,7 +21,8 @@ class Well:
     plate_id : int
     metadata : dict
     
-    def __init__(self, name, 
+    def __init__(self,
+                 name, 
                  coordinate, 
                  index = None,
                  plate_id = None,
@@ -29,7 +30,7 @@ class Well:
         
         self.name = name
         self.coordinate = coordinate
-        self.indexd = index
+        self.index = index
         self.plate_id = plate_id
         self.metadata = metadata
         
@@ -63,7 +64,7 @@ class Plate:
     columns: list = []
     wells: list = [] # list of well objects
     index_coordinates: list = [] # list of tuples with a pair of ints (row, column)
-    coordinates: list = [] # list of strings for canonical naming of plate coordnates, i.e A1, A2, A3, ..., B1, B2, etc
+    alphanumerical_coordinates: list = [] # list of strings for canonical naming of plate coordnates, i.e A1, A2, A3, ..., B1, B2, etc
     
     well_coordinates: list = []
     well_names: list = []
@@ -73,7 +74,7 @@ class Plate:
     
     
     ##def __init__(self, annotation_data: list,color_data: list,rows=list('ABCDEFGH'),columns=list(range(0, 12))):
-    def __init__(self, plate_id = 1, *args, **kwargs) -> None:    
+    def __init__(self,  *args, plate_id = 1, **kwargs) -> None:    
         """_summary_
         
         Constructs all the necessary attributes for the Plate object, given the specifications in the plate.toml file
@@ -91,9 +92,11 @@ class Plate:
             
         self.rows = list(range(0,rows))
         self.columns = list(range(0,columns))
+        self.capacity = len(self.rows) * len(self.columns)
         
         self.create_index_coordinates()
-        
+        self.create_alphanumerical_coordinates()
+        self.define_wells()
         
         # # create well names from plate row and column labels
         # self.well_names = list(itertools.product(
@@ -110,14 +113,34 @@ class Plate:
                                         )
                                       )
         
-    def create_coordinates(self):
-        pass
-    
+    def create_alphanumerical_coordinates(self):
+        alphabet = list(string.ascii_uppercase)
+        
+        row_crds = alphabet
+        number_of_repeats = 1
+        
+        while len(self.rows) > len(row_crds):
+            row_crds = list(itertools.product(alphabet, repeat=number_of_repeats))
+            number_of_repeats += 1
+            
+        alphanumerical_coordinates = []
+        for r_i, row in enumerate(self.rows):
+            for c_i, column in enumerate(self.columns):
+                #an_crd = row_crds[r_i], column
+                r_str = str()
+                for r in row_crds[r_i]:
+                    r_str = r_str.join(r)
+                
+                alphanumerical_coordinates.append(f"{r_str}_{c_i+1}")
+        
+        self.alphanumerical_coordinates = alphanumerical_coordinates
+        
     def define_wells(self):
         
-        for i, index_crd, crd in enumerate(zip(self.index_coordinates, self.coordinates)):
+        for i, index_crd, crd in enumerate(zip(self.index_coordinates, self.alphanumerical_coordinates)):
             self.wells.append(
-                Well(coordinate=crd, 
+                Well(coordinate=index_crd,
+                     name=crd,
                      index=i, 
                      plate_id=self.plate_id)
             )
