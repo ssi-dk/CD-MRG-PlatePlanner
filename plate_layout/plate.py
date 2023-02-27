@@ -22,8 +22,8 @@ class Well:
     metadata : dict
     
     def __init__(self,
-                 name, 
-                 coordinate, 
+                 name = None, 
+                 coordinate = None, 
                  index = None,
                  plate_id = None,
                  metadata = None) -> None:
@@ -33,7 +33,7 @@ class Well:
         self.index = index
         self.plate_id = plate_id
         self.metadata = metadata
-        
+     
     def __str__(self) -> str:
         pass
     
@@ -60,11 +60,14 @@ class Plate:
     
     """
     
-    rows: list = []
-    columns: list = []
-    wells: list = [] # list of well objects
-    index_coordinates: list = [] # list of tuples with a pair of ints (row, column)
-    alphanumerical_coordinates: list = [] # list of strings for canonical naming of plate coordnates, i.e A1, A2, A3, ..., B1, B2, etc
+    plate_id : int
+    rows: list 
+    columns: list 
+    wells: list # list of well objects
+    _coordinates: list # list of tuples with a pair of ints (row, column)
+    _alphanumerical_coordinates: list # list of strings for canonical naming of plate coordnates, i.e A1, A2, A3, ..., B1, B2, etc
+    _coordinates2index : dict # map well index to well coordinate
+    _name2index : dict # map well index to well name
     
     well_coordinates: list = []
     well_names: list = []
@@ -74,40 +77,34 @@ class Plate:
     
     
     ##def __init__(self, annotation_data: list,color_data: list,rows=list('ABCDEFGH'),columns=list(range(0, 12))):
-    def __init__(self,  *args, plate_id = 1, **kwargs) -> None:    
+    def __init__(self,  *args, plate_id=1, **kwargs) -> None:    
         """_summary_
         
         Constructs all the necessary attributes for the Plate object, given the specifications in the plate.toml file
         
         """
-        self.plate_id = plate_id
         
         if args:
             rows = args[0][0]
             columns = args[0][1]
         
         if kwargs:
-            rows = kwargs['rows']
-            columns = kwargs['columns']
+            rows = kwargs["rows"]
+            columns = kwargs["columns"]
             
+        self.plate_id = plate_id
         self.rows = list(range(0,rows))
         self.columns = list(range(0,columns))
         self.capacity = len(self.rows) * len(self.columns)
+        self.wells = [None] * self.capacity
         
         self.create_index_coordinates()
         self.create_alphanumerical_coordinates()
         self.define_wells()
         
-        # # create well names from plate row and column labels
-        # self.well_names = list(itertools.product(
-        #                         [str(val) for val in self.rows],
-        #                         [str(val) for val in self.columns]
-        #                         )
-        #                        )
-        
     def create_index_coordinates(self):
         # count from left to right, starting at well in top left
-        self.index_coordinates = list(itertools.product(
+        self._coordinates = list(itertools.product(
                                         range(len(self.rows)-1, -1, -1),
                                         range(0, len(self.columns))
                                         )
@@ -133,35 +130,61 @@ class Plate:
                 
                 alphanumerical_coordinates.append(f"{r_str}_{c_i+1}")
         
-        self.alphanumerical_coordinates = alphanumerical_coordinates
+        self._alphanumerical_coordinates = alphanumerical_coordinates
         
+    
     def define_wells(self):
         
-        for i, index_crd, crd in enumerate(zip(self.index_coordinates, self.alphanumerical_coordinates)):
-            self.wells.append(
+        wells = []
+        well_crd_to_index_map = {}
+        well_name_to_index_map = {}
+        
+        for i, crd in enumerate(zip(self._coordinates, self._alphanumerical_coordinates)):
+            index_crd = crd[0]
+            name_crd = crd[1]
+            
+            wells.append(
                 Well(coordinate=index_crd,
-                     name=crd,
+                     name=name_crd,
                      index=i, 
                      plate_id=self.plate_id)
             )
             
+            well_crd_to_index_map[index_crd] = i
+            well_name_to_index_map[name_crd] = i
+            
+        self.wells = wells
+        self._coordinates2index = well_crd_to_index_map
+        self._name2index = well_name_to_index_map
+        
           
-    def __len__(self):
-        # TODO
-        pass
+    def __len__(self) -> int:
+        return len(self.wells)
     
     def __contains__(self):
         # TODO
         pass
     
-    def __getitem__(self, coordinate):
-        # TODO
-        pass
+    def __getitem__(self, key) -> object:
         
-    def __setitem__(self, coordinate, well):
-        # TODO
-        pass
-    
+        key_type = type(key)
+        
+        if key_type is str:
+            index = self._name2index[key]
+        elif key_type is int:
+            index = key
+        elif key_type is tuple:
+            index = self._coordinates2index[key]
+        else:
+            raise KeyError(key)
+        
+            
+        return self.wells[index]
+        
+    def __setitem__(self, index, well_object) -> None:
+        self.wells[index] = well_object
+        
+        
     def __delitem__(self):
         # TODO
         pass
