@@ -42,6 +42,7 @@ class Well:
     def __repr__(self) -> str:
         return f"Well(name={self.name}, coordinate={self.coordinate})"
 
+
 class Plate:
     
     """_summary_
@@ -62,23 +63,19 @@ class Plate:
     
     """
     
+    # "public"
     plate_id : int
     rows: list 
     columns: list 
     wells: list # list of well objects
+    
+    # "private"
     _coordinates: list # list of tuples with a pair of ints (row, column)
     _alphanumerical_coordinates: list # list of strings for canonical naming of plate coordnates, i.e A1, A2, A3, ..., B1, B2, etc
     _coordinates2index : dict # map well index to well coordinate
     _name2index : dict # map well index to well name
     
-    well_coordinates: list = []
-    well_names: list = []
     
-    plate_well_names: object = np.empty(0) # -> numpy array 
-    plate_well_coordinates: object = np.empty(0) # -> numpy array 
-    
-    
-    ##def __init__(self, annotation_data: list,color_data: list,rows=list('ABCDEFGH'),columns=list(range(0, 12))):
     def __init__(self,  *args, plate_id=1, **kwargs) -> None:    
         """_summary_
         
@@ -106,7 +103,9 @@ class Plate:
         
         self.define_empty_wells()
         
-        #logger.info(f"Created a plate with {len(self)} wells: \n ")
+        logger.info(f"Created a plate with {len(self)} wells:")
+        logger.debug(f"Canonical well coordinate:\n{self}")
+        logger.debug(f"Well index coordinates:\n{self.plate_to_numpy_array(self._coordinates)}")
 
         
     @staticmethod    
@@ -210,6 +209,9 @@ class Plate:
         # TODO
         pass
     
+    def __str__(self):
+        return f"{self.plate_to_numpy_array(self._alphanumerical_coordinates)}"
+    
     def update_well_position(self, index):
         self.wells[index].name = self._alphanumerical_coordinates[index]
         self.wells[index].coordinate = self._coordinates[index]
@@ -225,13 +227,39 @@ class Plate:
             r, c = well[0], well[1]
             plate_array[r][c] = data[i]
 
-        return np.flipud(plate_array)    
+        return np.flipud(plate_array)
     
     
-    def create_layout(self):
-        self.build_coordinate_system()
-        self.create_layout_template()
     
+# A plate with QC samples is a subclass of a Plate
+class QCplate(Plate):
+    """_summary_
+    Class that represents a multiwell plate where some wells should 
+    contain quality control samples according to the scheme defined 
+    in <config_file.toml>
+
+    Args:
+        Plate (_type_): _description_
+    """
+    
+    def __init__(self, config_file = None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.configfile = config_file
+        
+        self.load_config_file(config_file)
+        #self.create_layout_template()
+        #self.create_sample_order()
+        
+        
+    def __str__(self):
+        return f"{self.plate_to_numpy_array(self._alphanumerical_coordinates)}"
+    
+    
+    def __repr__(self):
+        pass
+       
+       
     def load_config_file(self, config_file: str = None):
         
         # READ CONFIG FILE
@@ -260,37 +288,29 @@ class Plate:
 
         # <- end try
     
-                
-
-    def create_layout_template(self):
+    def define_unique_QC_sequences(self):
         """_summary_
 
         """
         
-        # check if config file is in right format for QC???
-        
         # Check if QC scheme defined in config file
-        QC = self.config.get('QC', False) 
+        logger.debug("Setting up QC scheme from config file")
         
-        if QC:
-            logger.info("Setting up QC scheme from config file")
-            
-            N_specimens_between_QC = self.config['QC']['run_QC_after_n_specimens']
-            QCscheme = self.config['QC']['scheme']
-            QCnames = self.config['QC']['names']
-            
-            N_QC_samples_per_round = np.max(
-                [QCscheme[key]['position_in_round'] for key in QCscheme.keys()]
-                )
-            
-            N_unique_QCrounds = np.max(
-                [QCscheme[key]['every_n_rounds'] for key in QCscheme.keys()]
+        self.N_specimens_between_QC = self.config['QC']['run_QC_after_n_specimens']
+        QCscheme = self.config['QC']['scheme']
+       
+        self.N_QC_samples_per_round = np.max(
+            [QCscheme[key]['position_in_round'] for key in QCscheme.keys()]
             )
+        
+        self.N_unique_QCrounds = np.max(
+            [QCscheme[key]['every_n_rounds'] for key in QCscheme.keys()]
+        )
         # <- end if 
 
         # Generate QC sequence list in each unique QC round
         QC_unique_seq = []
-        for m in range(0, N_unique_QCrounds):
+        for m in range(0, self.N_unique_QCrounds):
 
             m_seq = []
 
@@ -314,41 +334,153 @@ class Plate:
             logger.debug(f"\t{i+1}) {qc_seq}")
             
         self._QC_unique_seq = QC_unique_seq
+        
 
+    def define_QC_rounds(self):
+        
         #Number of QC rounds per plate
-        N_QC_rounds = self._n_wells // (N_QC_samples_per_round + N_specimens_between_QC - 1)
+        N_QC_rounds = self.capacity // (self.N_QC_samples_per_round + self.N_specimens_between_QC - 1)
 
         logger.debug(f"Assigning {N_QC_rounds} QC rounds per plate")
 
-        # Generate QC sample sequence for each QC round
-        qc_rounds = 0
-        QC_seq_rounds = []
-        while qc_rounds < N_QC_rounds:
-            for seq in QC_unique_seq:
-                qc_rounds += 1
-                QC_seq_rounds.append(seq)
-                logger.debug(f"\t Round {qc_rounds}: {seq}")
-
-            qc_rounds = len(QC_seq_rounds)
-
-        # Collect all in one dict
-        self.QC = {
-            "samples": QCnames,
-            "freq": QCscheme,
-            "unique_sequence": QC_unique_seq,
-            "sequence_per_round": QC_seq_rounds,
-            "frequency": N_specimens_between_QC,
-            "N_per_round": N_QC_samples_per_round,   
-            "N_unique_rounds": N_unique_QCrounds,
-        }
+        # Create dict with key = QC round; 
+        # value = a dict with well indices and associated sequence of QC samples
         
-        self.N_cons_specimens = N_specimens_between_QC
-        self.N_cons_QC =N_QC_samples_per_round
+        QC_rounds = {}
+        well_count_start = 0
+        round_count = 0
+        QC_well_indices = []
         
-        self.create_sample_order()
+        while round_count < N_QC_rounds:
+            
+            if not self.config["QC"]["start_with_QC_round"]: 
+                well_count_start += self.N_specimens_between_QC
+                
+            for sequence in self._QC_unique_seq:
+                well_indices = list(range(well_count_start,
+                                          well_count_start + len(sequence)))
+                round_count += 1
+ 
+                QC_rounds[round_count] = {"sequence": sequence,
+                                       "well_index": well_indices}
+                QC_well_indices += well_indices
+                
+                well_count_start += len(sequence) 
+                well_count_start += self.N_specimens_between_QC 
+                
+                logger.debug(f"\t Round {round_count}: {sequence}; wells {well_indices}")
+           
         
-        logger.info(f"\n\t{self.plate_sample_layout}")
+        self.QC_rounds = QC_rounds
+        self._well_inds_QC = QC_well_indices
+        self._well_inds_specimens = [w for w in range(0,self.capacity) if w not in QC_well_indices]
 
+
+
+    def create_plate_layout(self):
+        self.define_unique_QC_sequences()
+        self.define_QC_rounds()
+        
+        
+     
+        
+        # # Collect all in one dict
+        # self.QC = {
+        #     "samples": QCnames,
+        #     "freq": QCscheme,
+        #     "unique_sequence": QC_unique_seq,
+        #     "sequence_per_round": QC_seq_rounds,
+        #     "frequency": N_specimens_between_QC,
+        #     "N_per_round": N_QC_samples_per_round,   
+        #     "N_unique_rounds": N_unique_QCrounds,
+        # }
+        
+        # self.N_cons_specimens = N_specimens_between_QC
+        # self.N_cons_QC =N_QC_samples_per_round
+
+    # def create_layout_template(self):
+    #     """_summary_
+
+    #     """
+        
+    #     # check if config file is in right format for QC???
+        
+    #     # Check if QC scheme defined in config file
+    #     QC = self.config.get('QC', False) 
+        
+    #     if QC:
+    #         logger.debug("Setting up QC scheme from config file")
+            
+    #         N_specimens_between_QC = self.config['QC']['run_QC_after_n_specimens']
+    #         QCscheme = self.config['QC']['scheme']
+    #         QCnames = self.config['QC']['names']
+            
+    #         N_QC_samples_per_round = np.max(
+    #             [QCscheme[key]['position_in_round'] for key in QCscheme.keys()]
+    #             )
+            
+    #         N_unique_QCrounds = np.max(
+    #             [QCscheme[key]['every_n_rounds'] for key in QCscheme.keys()]
+    #         )
+    #     # <- end if 
+
+    #     # Generate QC sequence list in each unique QC round
+    #     QC_unique_seq = []
+    #     for m in range(0, N_unique_QCrounds):
+
+    #         m_seq = []
+
+    #         for key in QCscheme:
+    #             order = QCscheme[key]['position_in_round']
+
+    #             if QCscheme[key]["introduce_in_round"] == m + 1:
+    #                 m_seq.append((key, order))
+
+    #             if QCscheme[key]["introduce_in_round"] == 0:
+    #                 m_seq.append((key, order))
+    #         # <- end for loop
+
+    #         m_seq.sort(key=lambda x: x[1])
+    #         QC_unique_seq.append(m_seq)
+            
+    #     # <- end for loop
+        
+    #     logger.debug(f"{len(QC_unique_seq)} unique QC sequences defined: ")
+    #     for i, qc_seq in enumerate(QC_unique_seq):
+    #         logger.debug(f"\t{i+1}) {qc_seq}")
+            
+    #     self._QC_unique_seq = QC_unique_seq
+
+    #     #Number of QC rounds per plate
+    #     N_QC_rounds = self.capacity // (N_QC_samples_per_round + N_specimens_between_QC - 1)
+
+    #     logger.debug(f"Assigning {N_QC_rounds} QC rounds per plate")
+
+    #     # Generate QC sample sequence for each QC round
+    #     qc_rounds = 0
+    #     QC_seq_rounds = []
+    #     while qc_rounds < N_QC_rounds:
+    #         for seq in QC_unique_seq:
+    #             qc_rounds += 1
+    #             QC_seq_rounds.append(seq)
+    #             logger.debug(f"\t Round {qc_rounds}: {seq}")
+
+    #         qc_rounds = len(QC_seq_rounds)
+
+    #     # Collect all in one dict
+    #     self.QC = {
+    #         "samples": QCnames,
+    #         "freq": QCscheme,
+    #         "unique_sequence": QC_unique_seq,
+    #         "sequence_per_round": QC_seq_rounds,
+    #         "frequency": N_specimens_between_QC,
+    #         "N_per_round": N_QC_samples_per_round,   
+    #         "N_unique_rounds": N_unique_QCrounds,
+    #     }
+        
+    #     self.N_cons_specimens = N_specimens_between_QC
+    #     self.N_cons_QC =N_QC_samples_per_round
+        
 
     def create_sample_order(self):
 
@@ -430,153 +562,19 @@ class Plate:
         self.N_specimen_rounds = state['specimen_rounds']
         
         self.sample_order = sample_order
-        self.plate_sample_layout = self.populate_plate(sample_order)   
+        self.plate_sample_layout = self.plate_to_numpy_array(sample_order)
         
+        logger.info(f"\n\t{self.plate_sample_layout}")
         
-    def populate_plate(self, data: list) -> object:
-         
-        plate_array = np.empty((self._n_rows, self._n_columns), 
-                               dtype=object)
+    
+        
+    
+class Nisse:
+        
 
-        for i, well in enumerate(self.well_coordinates):
-            r, c = well[0], well[1]
-            plate_array[r][c] = data[i]
-
-        return np.flipud(plate_array)
 
         
-    def create_batches(self, specimen_df: object) -> None: 
-        """Distributes specimen samples in <specimen_df> together with QC samples on plates according to the QC sample scheme.
-        
-        Created attributes. 
-        Each batch (plate) is a pandas dataframe stored in a list in the object attribute 'batches_df', and ''
-
-        Args:
-            specimen_df (object): pandas dataframe where each row is a specimen sample
-        """
-        
-        batch_count = 1
-        batches_df_list = []
-        
-        # get specimen data from study list
-        
-        specimen_df_copy = specimen_df.copy()
-        spec_count = 0
-        
-        while specimen_df_copy.shape[0] > 0:
-
-            # extract max specimen samples that will fit on plate; select from top and remove them from original DF
-            sel = specimen_df_copy.head(self.N_specimens)
-            specimen_df_copy.drop(index=sel.index, inplace=True) 
-            
-            # reset index to so that rows always start with index 0
-            sel.reset_index(inplace=True, drop=True)
-            specimen_df_copy.reset_index(inplace=True, drop=True)
-
-            # keep track on how many wells we should use per batch
-            N_specimens_left = len(sel)
-
-            # populate batch dict 
-            batch_temp = {
-                "well_name": [],
-                "well_coords": [],
-                "sample_name": [],
-                "batch_number": [],
-            }
-            
-            # add keys from dataframe columns
-            columns = specimen_df.columns
-            for col in columns:
-                batch_temp.setdefault(col, [])
-            
-            
-            batch = batch_temp.copy()
-            
-            # For some reason we have to reset the batch dict like this
-            for key in batch.keys():
-                batch[key]=[]
-
-            for i, sample in enumerate(self.sample_order):
-                
-                #print(f"BATCH {batch_count}, SAMPLE {sample}")
-                sample_type, sample_number = sample.split("_")
-                
-                if sample_type == "S" and (int(sample_number) > N_specimens_left):
-                    logger.debug(f"Finished distributing specimen samples to plate wells. Last specimen is {self.sample_order[i-1]}")
-                    break
-                                
-                batch['well_name'].append( str().join(self.well_names[i]) )
-                batch['well_coords'].append(self.well_coordinates[i])
-                batch['sample_name'].append(self.sample_order[i])
-                batch['batch_number'].append(batch_count)
-                
-                index = int(sample_number)-1
-                
-                if sample_type == "S":
-                    for col in columns:
-                        batch[col].append( sel[col][index])
-                        
-                    spec_count += 1
-                else:
-                    for col in columns: 
-                        batch[col].append(np.nan)
-                       
-            # --- END OF FOOR LOOP ---
-
-            batch_df = pd.DataFrame(batch)
-            
-            batches_df_list.append(batch_df)
-            
-            batch_count += 1
-
-        # --- END OF WHILE LOOP ---
-        
-        self.batches_df = batches_df_list
-        self.N_batches = len(batches_df_list)
-        
-        # concatenate all DFs to one long DF
-        self.all_batches_df = pd.concat(batches_df_list).reset_index()
-        
-        logger.info(f"Finished distributing samples onto plates; {self.N_batches} batches created.")
-
-    def to_file(self, 
-                fileformat: str = "csv",
-                batch_index: list = None,
-                folder_path: str = None,
-                write_columns: list = None):
-        
-        if batch_index is None:
-            batch_index = range(0, len(self.batches_df))
-            
-        if folder_path is None:
-            folder_path = os.getcwd()
-        
-        for id in batch_index:
-            filename = f"batch_{id+1}."
-            filepath = os.path.join(folder_path, filename)
-            
-            batch = self.batches_df[id]
-            
-            if write_columns is not None:
-                dropcolumns = [col for col in batch.columns if col not in write_columns]
-                batch = batch.drop(columns=dropcolumns)
-                logger.debug("Dropping columns from dataframe:")
-                for col in dropcolumns:
-                    logger.debug(f"\t{col}")
-            
-            if fileformat == "tsv" or ("tab" in fileformat): 
-                fext = "tsv"
-                batch.to_csv(filepath+fext, sep="\t")
-                
-            elif fileformat == "csv" or ("comma" in fileformat):
-                fext = "csv"
-                batch.to_csv(filepath+fext)
-                
-            else:
-                fext = "xlxs"
-                batch.to_excel(filepath+fext)
-                
-            logger.info(f"Saving batch {id} to {filepath+fext} ")
+    
 
 
     def plot_layout(self, **kwargs):
@@ -742,7 +740,179 @@ class Plate:
         ax.set_axisbelow(True)
                 
         return fig
+
     
-    def __str__(self) -> str:
-        return f"{self.plate_rep}"
+
+class Study:
     
+    name = str
+    sample_layout = object
+    QC_config_file = str
+    batches = list
+    
+    
+    def __init__(self, 
+                 study_name=None, 
+                 study_samples = None):
+        
+        self.name = study_name
+    
+    def __repr__(self):
+        pass
+    def __str__():
+        pass
+    
+    def __contains__():
+        pass
+    
+    def load_specimen_records():
+        pass
+    
+    def distribute_to_plates():
+        pass
+    
+    def add_samples_to_plate():
+        pass
+    
+    def create_batch_layout_lists():
+        pass
+    
+    def create_batch_layout_figures():
+        pass
+    
+    
+    def create_batches(self, specimen_df: object) -> None: 
+            """Distributes specimen samples in <specimen_df> together with QC samples on plates according to the QC sample scheme.
+            
+            Created attributes. 
+            Each batch (plate) is a pandas dataframe stored in a list in the object attribute 'batches_df', and ''
+
+            Args:
+                specimen_df (object): pandas dataframe where each row is a specimen sample
+            """
+            
+            batch_count = 1
+            batches_df_list = []
+            
+            # get specimen data from study list
+            
+            specimen_df_copy = specimen_df.copy()
+            spec_count = 0
+            
+            while specimen_df_copy.shape[0] > 0:
+
+                # extract max specimen samples that will fit on plate; select from top and remove them from original DF
+                sel = specimen_df_copy.head(self.N_specimens)
+                specimen_df_copy.drop(index=sel.index, inplace=True) 
+                
+                # reset index to so that rows always start with index 0
+                sel.reset_index(inplace=True, drop=True)
+                specimen_df_copy.reset_index(inplace=True, drop=True)
+
+                # keep track on how many wells we should use per batch
+                N_specimens_left = len(sel)
+
+                # populate batch dict 
+                batch_temp = {
+                    "well_name": [],
+                    "well_coords": [],
+                    "sample_name": [],
+                    "batch_number": [],
+                }
+                
+                # add keys from dataframe columns
+                columns = specimen_df.columns
+                for col in columns:
+                    batch_temp.setdefault(col, [])
+                
+                
+                batch = batch_temp.copy()
+                
+                # For some reason we have to reset the batch dict like this
+                for key in batch.keys():
+                    batch[key]=[]
+
+                for i, sample in enumerate(self.sample_order):
+                    
+                    #print(f"BATCH {batch_count}, SAMPLE {sample}")
+                    sample_type, sample_number = sample.split("_")
+                    
+                    if sample_type == "S" and (int(sample_number) > N_specimens_left):
+                        logger.debug(f"Finished distributing specimen samples to plate wells. Last specimen is {self.sample_order[i-1]}")
+                        break
+                                    
+                    batch['well_name'].append( str().join(self.well_names[i]) )
+                    batch['well_coords'].append(self.well_coordinates[i])
+                    batch['sample_name'].append(self.sample_order[i])
+                    batch['batch_number'].append(batch_count)
+                    
+                    index = int(sample_number)-1
+                    
+                    if sample_type == "S":
+                        for col in columns:
+                            batch[col].append( sel[col][index])
+                            
+                        spec_count += 1
+                    else:
+                        for col in columns: 
+                            batch[col].append(np.nan)
+                        
+                # --- END OF FOOR LOOP ---
+
+                batch_df = pd.DataFrame(batch)
+                
+                batches_df_list.append(batch_df)
+                
+                batch_count += 1
+
+            # --- END OF WHILE LOOP ---
+            
+            self.batches_df = batches_df_list
+            self.N_batches = len(batches_df_list)
+            
+            # concatenate all DFs to one long DF
+            self.all_batches_df = pd.concat(batches_df_list).reset_index()
+            
+            logger.info(f"Finished distributing samples onto plates; {self.N_batches} batches created.")
+
+    def to_file(self, 
+                fileformat: str = "csv",
+                batch_index: list = None,
+                folder_path: str = None,
+                write_columns: list = None):
+        
+        if batch_index is None:
+            batch_index = range(0, len(self.batches_df))
+            
+        if folder_path is None:
+            folder_path = os.getcwd()
+        
+        for id in batch_index:
+            filename = f"batch_{id+1}."
+            filepath = os.path.join(folder_path, filename)
+            
+            batch = self.batches_df[id]
+            
+            if write_columns is not None:
+                dropcolumns = [col for col in batch.columns if col not in write_columns]
+                batch = batch.drop(columns=dropcolumns)
+                logger.debug("Dropping columns from dataframe:")
+                for col in dropcolumns:
+                    logger.debug(f"\t{col}")
+            
+            if fileformat == "tsv" or ("tab" in fileformat): 
+                fext = "tsv"
+                batch.to_csv(filepath+fext, sep="\t")
+                
+            elif fileformat == "csv" or ("comma" in fileformat):
+                fext = "csv"
+                batch.to_csv(filepath+fext)
+                
+            else:
+                fext = "xlxs"
+                batch.to_excel(filepath+fext)
+                
+            logger.info(f"Saving batch {id} to {filepath+fext} ")    
+
+
+

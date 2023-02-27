@@ -1,11 +1,13 @@
 import pytest
-from plate_layout.plate import Plate
-from plate_layout.plate import Well
+from plate_layout.plate_layout import Plate
+from plate_layout.plate_layout import Well
+from plate_layout.plate_layout import Study
+from plate_layout.plate_layout import QCplate
+
 
 #@pytest.fixture
 
 # Well class
-
 def test_should_create_well():
     well =  Well("A0", (0,0)) 
     
@@ -146,3 +148,39 @@ def test_should_get_well_by_key():
 
 def test_should_set_well_by_key():
     assert 1 == 2, "REMINDER: This test is not written yet" 
+    
+
+# qcplate subclass
+def test_should_create_qcplate():
+    qcplate = QCplate("../config/plate_config.toml", (8,12), plate_id=3)
+        
+    assert qcplate.capacity == 96
+    assert qcplate.plate_id == 3
+    #assert qcplate.config
+
+def test_should_create_QC_sequences():
+    qcplate = QCplate("../config/plate_config.toml", (8,12), plate_id=3)
+    
+    qcplate.create_QC_sequences()
+    
+    assert 1 ==1 
+    
+    
+def test_should_create_layout():
+    qcplate = QCplate("../config/plate_config.toml", (8,12), plate_id=3)
+    
+    qcplate.create_plate_layout()
+    
+    assert 1 == 1
+
+
+# study class
+
+def test_should_create_empty_study():
+    study_name = "CNS_tumor_study"
+    my_study = Study(study_name)
+    
+    assert my_study.name == study_name
+    
+    
+    
