@@ -63,6 +63,9 @@ class Plate:
     
     """
     
+    specimen_code : str = "S"
+    specimen_base_name : str = "Specimen"
+    
     # "public"
     plate_id : int
     rows: list 
@@ -248,8 +251,7 @@ class QCplate(Plate):
         self.configfile = config_file
         
         self.load_config_file(config_file)
-        #self.create_layout_template()
-        #self.create_sample_order()
+        self.create_plate_layout()
         
         
     def __str__(self):
@@ -272,8 +274,7 @@ class QCplate(Plate):
             if config_file_search:
                 config_file = config_file_search[0]
                 logger.info(f"Using toml file '{config_file}'")
-            # <- end if
-        # <- end if     
+  
         
         try:
             with open(config_file, mode="rb") as fp:
@@ -286,7 +287,7 @@ class QCplate(Plate):
         except FileNotFoundError:
             logger.error(f"Could not find/open config file {config_file}")
 
-        # <- end try
+
     
     def define_unique_QC_sequences(self):
         """_summary_
@@ -381,9 +382,30 @@ class QCplate(Plate):
         self.define_unique_QC_sequences()
         self.define_QC_rounds()
         
+        counts = {}
+        for qc_type in self.config["QC"]["names"].keys():
+            counts.setdefault(qc_type, 0)
+            
+        # set metadata for wells that are for QC samples
+        for val in self.QC_rounds.values(): 
+            for sample, index in zip(val["sequence"], val["well_index"]):
+                self.wells[index].metadata["QC"] = True
+                
+                sample_code = sample[0]
+                counts[sample_code] += 1
+                self.wells[index].metadata["sample_code"] = sample_code
+                
+                sample_type = self.config["QC"]["names"][sample[0]]
+                self.wells[index].metadata["sample_type"] = sample_type
+                self.wells[index].metadata["sample_name"] = f"{sample[0]}{counts[sample_code]}"
         
-     
-        
+        # set metadata for wells that are for specimen samples
+        for i, index in enumerate(self._well_inds_specimens):
+            self.wells[index].metadata["QC"] = False
+            self.wells[index].metadata["sample_code"] = self.specimen_code
+            self.wells[index].metadata["sample_type"] = self.specimen_base_name
+            self.wells[index].metadata["sample_name"] = f"{self.specimen_code}{i+1}"
+
         # # Collect all in one dict
         # self.QC = {
         #     "samples": QCnames,
@@ -482,100 +504,9 @@ class QCplate(Plate):
     #     self.N_cons_QC =N_QC_samples_per_round
         
 
-    def create_sample_order(self):
 
-        # GENERATE TEMPLATE FOR PLATE LAYOUT IN TERMS OF QC AND SPECIMEN SAMPLE ORDER
 
-        # Check if QC scheme defined in config file
-        QC = self.config.get('QC', False)
-        if QC: 
-            start_with_QC = self.config['QC']['start_with_QC_round']
-        else:
-            start_with_QC = False
-            
-        sample_order = []
-
-        # Keep track of "run state" for entering or leaving QC/specimen run count
-        state = {
-            "run_QC":  start_with_QC,  # start with QC round?
-            "QC_round": 0,
-            "QC_count": 0,
-            "total_QC_count": 0,
-            "specimen_count": 0,
-            "total_specimen_count": 0,
-            "N_wells_assigned": 0,
-            "specimen_rounds": 0,
-        }
-
-        # Set up counter for each QC sample
-        QC_count = {key: 0 for key in self.QC['samples']}
-
-        logger.info(f"Distributing specimen and QC samples on plate ")
-        # Loop row-wise over plate wells and assign sample order
-        for row, col in self.well_coordinates: 
-        
-            if state['run_QC']:  # RUN QC ROUND
-  
-                state['total_QC_count'] += 1
-                
-                logger.debug(f"\t Assigning QC sample {state['total_QC_count'] }")
-                
-                # Get QC sample in the sequence for current QC round
-                QC_sample = self.QC['sequence_per_round'][state['QC_round']
-                                                    ][state['QC_count']][0]
-                QC_count[QC_sample] += 1
-
-                sample_order.append(f"{QC_sample}_{QC_count[QC_sample]}")
-
-                # increment QC count while in QC round
-                state['QC_count'] += 1
-
-                if state['QC_count'] >= self.QC['N_per_round']:  # end QC round
-                    logger.debug(f"Finished with QC round {state['QC_round']}")
-                    state['run_QC'] = False
-                    state['QC_count'] = 0
-                    state['QC_round'] += 1
-
-            else:  # RUN SPECIMEN ROUND
-                
-                # increment speciment count wile in specimen round
-                state['specimen_count'] += 1
-                state['total_specimen_count'] += 1
-
-                logger.debug(f"Assigning specimen sample S{state['total_specimen_count']}")
-                
-                # end speciment round and start QC round
-                if QC and (state['specimen_count'] >= self.QC['frequency']):
-                    state['run_QC'] = True
-                    state['specimen_count'] = 0
-                    state['specimen_rounds']
-
-                sample_order.append(f"S_{state['total_specimen_count']}")
-
-            # Update assigment counter
-            state['N_wells_assigned'] += 1
-        # END LOOP
-
-        self.N_specimens = state['total_specimen_count']
-        self.N_QC_samples = state['total_QC_count']
-        self.N_QC_rounds = state['QC_round']
-        self.N_specimen_rounds = state['specimen_rounds']
-        
-        self.sample_order = sample_order
-        self.plate_sample_layout = self.plate_to_numpy_array(sample_order)
-        
-        logger.info(f"\n\t{self.plate_sample_layout}")
-        
-    
-        
-    
 class Nisse:
-        
-
-
-        
-    
-
 
     def plot_layout(self, **kwargs):
         
