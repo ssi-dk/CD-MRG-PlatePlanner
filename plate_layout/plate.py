@@ -18,27 +18,29 @@ class Well:
     """
     name : str
     coordinate : tuple
-    plate_id : int
     metadata : dict
     
     def __init__(self,
-                 name = None, 
-                 coordinate = None, 
+                 name="", 
+                 coordinate=(int, int), 
                  index = None,
                  plate_id = None,
                  metadata = None) -> None:
         
         self.name = name
         self.coordinate = coordinate
-        self.index = index
-        self.plate_id = plate_id
+        
+        if metadata is None:
+            metadata = {"index": index,
+                    "plate_id": plate_id}
+    
         self.metadata = metadata
      
     def __str__(self) -> str:
-        pass
+        return f"name: {self.name}\ncoordinate: {self.coordinate}\nmetadata: {self.metadata}"
     
     def __repr__(self) -> str:
-        pass
+        return f"Well(name={self.name}, coordinate={self.coordinate})"
 
 class Plate:
     
@@ -93,36 +95,42 @@ class Plate:
             columns = kwargs["columns"]
             
         self.plate_id = plate_id
+        
         self.rows = list(range(0,rows))
         self.columns = list(range(0,columns))
         self.capacity = len(self.rows) * len(self.columns)
-        self.wells = [None] * self.capacity
+      
         
-        self.create_index_coordinates()
-        self.create_alphanumerical_coordinates()
-        self.define_wells()
+        self._coordinates = Plate.create_index_coordinates(self.rows, self.columns)
+        self._alphanumerical_coordinates = Plate.create_alphanumerical_coordinates(self.rows, self.columns)
         
-    def create_index_coordinates(self):
+        self.define_empty_wells()
+        
+        #logger.info(f"Created a plate with {len(self)} wells: \n ")
+
+        
+    @staticmethod    
+    def create_index_coordinates(rows, columns) -> list:
         # count from left to right, starting at well in top left
-        self._coordinates = list(itertools.product(
-                                        range(len(self.rows)-1, -1, -1),
-                                        range(0, len(self.columns))
-                                        )
-                                      )
-        
-    def create_alphanumerical_coordinates(self):
+        return list(itertools.product(
+                                    range(len(rows)-1, -1, -1),
+                                    range(0, len(columns))
+                                    )
+                                    )
+    @staticmethod
+    def create_alphanumerical_coordinates(rows, columns) -> list:
         alphabet = list(string.ascii_uppercase)
         
         row_crds = alphabet
         number_of_repeats = 1
         
-        while len(self.rows) > len(row_crds):
+        while len(rows) > len(row_crds):
             row_crds = list(itertools.product(alphabet, repeat=number_of_repeats))
             number_of_repeats += 1
             
         alphanumerical_coordinates = []
-        for r_i, row in enumerate(self.rows):
-            for c_i, column in enumerate(self.columns):
+        for r_i, row in enumerate(rows):
+            for c_i, column in enumerate(columns):
                 #an_crd = row_crds[r_i], column
                 r_str = str()
                 for r in row_crds[r_i]:
@@ -130,10 +138,10 @@ class Plate:
                 
                 alphanumerical_coordinates.append(f"{r_str}_{c_i+1}")
         
-        self._alphanumerical_coordinates = alphanumerical_coordinates
+        return alphanumerical_coordinates
         
     
-    def define_wells(self):
+    def define_empty_wells(self):
         
         wells = []
         well_crd_to_index_map = {}
@@ -181,14 +189,45 @@ class Plate:
             
         return self.wells[index]
         
-    def __setitem__(self, index, well_object) -> None:
+    def __setitem__(self, key, well_object) -> None:
+        
+        key_type = type(key)
+        
+        if key_type is str:
+            index = self._name2index[key]
+        elif key_type is int:
+            index = key
+        elif key_type is tuple:
+            index = self._coordinates2index[key]
+        else:
+            raise KeyError(key)
+        
         self.wells[index] = well_object
+        self.update_well_position(index)
         
         
     def __delitem__(self):
         # TODO
         pass
+    
+    def update_well_position(self, index):
+        self.wells[index].name = self._alphanumerical_coordinates[index]
+        self.wells[index].coordinate = self._coordinates[index]
+        self.wells[index].metadata["index"] = index
         
+    
+    def plate_to_numpy_array(self, data: list) -> object:
+         
+        plate_array = np.empty((len(self.rows), len(self.columns)), 
+                               dtype=object)
+
+        for i, well in enumerate(self._coordinates):
+            r, c = well[0], well[1]
+            plate_array[r][c] = data[i]
+
+        return np.flipud(plate_array)    
+    
+    
     def create_layout(self):
         self.build_coordinate_system()
         self.create_layout_template()
@@ -221,65 +260,7 @@ class Plate:
 
         # <- end try
     
-    @staticmethod
-    def create_labels(rowcol_specification, flip_order:bool=False):
-         
-        flipper = -1 if flip_order else  1
-        
-        if isinstance(rowcol_specification, str):
-            label =  list(rowcol_specification)[::flipper]
-        elif isinstance(rowcol_specification, int):
-            label = list(range(0, rowcol_specification))[::flipper]
-        elif isinstance(rowcol_specification, list): 
-            label =  rowcol_specification
-        else:
-            label = None
-            
-        return label
-    
-
-    def build_coordinate_system(self):
-        
-        # SET WELL LABELS AND DIMENSIONS
-        
-        self.rows = Plate.create_labels(self.config['plate']['rows'], flip_order=False)
-        
-        if self.rows is None: 
-            logger.error("Unknown format for plate row labels in config file")
-            raise RuntimeError
-        
-        self.columns = Plate.create_labels(self.config['plate']['columns'])
-        
-        if self.columns is None: 
-            logger.error("Unknown format for plate column labels in config file")
-            raise RuntimeError
-        
-        
-        # Create coordinate system - use zero-indexing to conform with Python indexing 
-        
-        self._n_rows = len(self.rows)
-        self._n_columns = len(self.columns)
-        self._n_wells = self._n_rows * self._n_columns
-        
-        # count from left to right, starting at well in top left
-        self.well_coordinates = list(itertools.product(range(self._n_rows-1, -1, -1),
-                                                       range(0, self._n_columns)))
-        # create well names from plate row and column labels
-        self.well_names = list(itertools.product(
-            [str(val) for val in self.rows],
-            [str(val) for val in self.columns]
-        ))
-        
-        # store well names for plates in a matrix representation 
-        self.plate_well_names = self.populate_plate(
-            [lval+rval for lval,rval in self.well_names]
-            )
-        
-        # store well coordinates for plates in a matrix representation 
-        self.plate_well_coordinates = self.populate_plate(self.well_coordinates)
-        
-        logger.info(f"Created a plate with {self._n_wells} wells: \n {self.plate_well_names}")
-        
+                
 
     def create_layout_template(self):
         """_summary_
@@ -366,7 +347,7 @@ class Plate:
         
         self.create_sample_order()
         
-        logger.info(f"\n\t{self.plate_sample_order}")
+        logger.info(f"\n\t{self.plate_sample_layout}")
 
 
     def create_sample_order(self):
@@ -449,7 +430,7 @@ class Plate:
         self.N_specimen_rounds = state['specimen_rounds']
         
         self.sample_order = sample_order
-        self.plate_sample_order = self.populate_plate(sample_order)   
+        self.plate_sample_layout = self.populate_plate(sample_order)   
         
         
     def populate_plate(self, data: list) -> object:
@@ -763,5 +744,5 @@ class Plate:
         return fig
     
     def __str__(self) -> str:
-        return f"{self.plate_sample_order}"
+        return f"{self.plate_rep}"
     
