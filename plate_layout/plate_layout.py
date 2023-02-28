@@ -272,8 +272,7 @@ class Plate:
             
             
     def print_layout(self):
-        sample_names = [well.metadata["sample_name"] for well in self]
-        
+        sample_names = self.get("sample_name")
         print(self.plate_to_numpy_array(sample_names)) 
         
         
@@ -288,11 +287,8 @@ class Plate:
         
     
     def print_metadata(self, metadata_key):
-        
         plate_metadata = self.get(metadata_key)
-    
         print(self.plate_to_numpy_array(plate_metadata)) 
-        
         
             
     def plateplot(self, well_label_data: list, well_color_data: list,
