@@ -102,7 +102,6 @@ class Plate:
         self.rows = list(range(0,rows))
         self.columns = list(range(0,columns))
         self.capacity = len(self.rows) * len(self.columns)
-      
         
         self._coordinates = Plate.create_index_coordinates(self.rows, self.columns)
         self._alphanumerical_coordinates = Plate.create_alphanumerical_coordinates(self.rows, self.columns)
@@ -154,7 +153,10 @@ class Plate:
         well_crd_to_index_map = {}
         well_name_to_index_map = {}
         
-        for i, crd in enumerate(zip(self._coordinates, self._alphanumerical_coordinates)):
+        for i, crd in enumerate(
+                        zip(self._coordinates, self._alphanumerical_coordinates)
+                        ):
+            
             index_crd = crd[0]
             name_crd = crd[1]
             
@@ -190,8 +192,10 @@ class Plate:
         else:
             raise StopIteration
     
+    
     def __contains__(self, index):
         pass
+    
     
     def __getitem__(self, key) -> object:
         
@@ -206,8 +210,8 @@ class Plate:
         else:
             raise KeyError(key)
         
-            
         return self.wells[index]
+        
         
     def __setitem__(self, key, well_object) -> None:
         
@@ -280,7 +284,14 @@ class Plate:
         elif metadata_key == "coordinates":
             return [well.coordinate for well in self]
         else:
-            return [well.metadata["metadata_key"] for well in self]
+            return [well.metadata[metadata_key] for well in self]
+        
+    
+    def print_metadata(self, metadata_key):
+        
+        plate_metadata = self.get(metadata_key)
+    
+        print(self.plate_to_numpy_array(plate_metadata)) 
         
         
             
@@ -479,7 +490,6 @@ class QCplate(Plate):
         
         try:
             with open(config_file, mode="rb") as fp:
-                
                 self.config = tomli.load(fp)
             
             logger.info(f"Successfully loaded config file {config_file}")
@@ -623,8 +633,6 @@ class Nisse:
                    **kwargs):
         
         title_str = f"Batch {batch_index + 1}: {well_label_column} colored by {well_color_column}" 
-
-        
     
         self.plateplot(self.batches_df[batch_index][well_label_column].astype(label_dtype),
                        self.batches_df[batch_index][well_color_column],
