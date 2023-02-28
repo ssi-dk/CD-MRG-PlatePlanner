@@ -41,6 +41,7 @@ def test_should_create_plate_from_key_word_args():
     
     assert len(plate_96.rows) == 8
     assert len(plate_96.columns) == 12
+   
     
 def test_should_create_plate_id_from_key_word_args():
     plate_96 = Plate(rows=8, columns=12, plate_id=5)
@@ -192,6 +193,29 @@ def test_should_set_new_well_by_index_and_update_well_position():
     assert plate_96[11].name == "A_12"
     assert plate_96[(7,11)].coordinate == (7,11)
     
+    
+def test_should_get_well_names():
+    plate_96 = Plate((8,12))
+    
+    well_names = plate_96.get("names")
+    
+    assert well_names[0] == "A_1"
+    assert well_names[11] == "A_12"
+    assert well_names[84] == "H_1"
+    assert well_names[95] == "H_12"
+    
+    
+def test_should_get_well_coordinates():
+    plate_96 = Plate((8,12))
+    
+    well_crd = plate_96.get("coordinates")
+    
+    assert well_crd[0] == (7,0)
+    assert well_crd[11] == (7,11)
+    assert well_crd[84] == (0,0)
+    assert well_crd[95] == (0,11)
+ 
+    
 
 # QCplate SUBCLASS
 def test_should_raise_error_on_missing_config_file():
@@ -211,6 +235,7 @@ def test_should_create_QCplate():
     assert qcplate.plate_id == 3
     assert qcplate._QC_rounds[1]["sequence"][0] == ("PB",1)
     assert qcplate._QC_rounds[1]["sequence"][1] == ("EC",2)
+
 
 def test_should_get_well_QC_info_from_well_name():
     qcplate = QCplate(config_path, (8,12), plate_id = 3)

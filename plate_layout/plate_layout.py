@@ -36,8 +36,10 @@ class Well:
     
         self.metadata = metadata
      
+     
     def __str__(self) -> str:
         return f"name: {self.name}\ncoordinate: {self.coordinate}\nmetadata: {self.metadata}"
+    
     
     def __repr__(self) -> str:
         return f"Well(name={self.name}, coordinate={self.coordinate})"
@@ -121,6 +123,7 @@ class Plate:
                                     range(0, len(columns))
                                     )
                                     )
+        
     @staticmethod
     def create_alphanumerical_coordinates(rows, columns) -> list:
         alphabet = list(string.ascii_uppercase)
@@ -173,9 +176,11 @@ class Plate:
     def __len__(self) -> int:
         return len(self.wells)
     
+    
     def __iter__(self) -> list:
         self._itercount = 0
         return self
+    
     
     def __next__(self):
         if self._itercount < self.capacity: 
@@ -231,6 +236,10 @@ class Plate:
     def __str__(self):
         return f"{self.plate_to_numpy_array(self._alphanumerical_coordinates)}"
     
+    def __repr__(self):
+        return f"Plate(({len(self.rows)},{len(self.columns)})"
+    
+    
     def update_well_position(self, index):
         self.wells[index].name = self._alphanumerical_coordinates[index]
         self.wells[index].coordinate = self._coordinates[index]
@@ -256,6 +265,165 @@ class Plate:
             self.wells[i].metadata["sample_code"] = self.specimen_code
             self.wells[i].metadata["sample_type"] = self.specimen_base_name
             self.wells[i].metadata["sample_name"] = f"{self.specimen_code}{i+1}"
+            
+            
+    def print_layout(self):
+        sample_names = [well.metadata["sample_name"] for well in self]
+        
+        print(self.plate_to_numpy_array(sample_names)) 
+        
+        
+    def get(self, metadata_key) -> list:
+        
+        if metadata_key == "names": 
+            return [well.name for well in self]
+        elif metadata_key == "coordinates":
+            return [well.coordinate for well in self]
+        else:
+            return [well.metadata["metadata_key"] for well in self]
+        
+        
+            
+    def plateplot(self, well_label_data: list, well_color_data: list,
+                fontsize: int = 8,
+                rotation: int = 0,
+                colormap: str = "tab20",
+                NaN_color: tuple = (1,1,1),
+                step = 10,
+                title_str = '',
+                alpha_val = 0.7,
+                well_size = 1200
+                ):
+
+        # DEFINE COLORS TO USE
+        levels = pd.unique(well_color_data)    
+        print(f"Number of colors to use: {len(levels)}")
+        
+        RGB_colors = {}
+        for i,s in enumerate(levels): 
+            col = mpl.colormaps[colormap](i)[0:3] #get RGB values for i-th color in colormap
+            if not pd.isnull(s):
+                RGB_colors.setdefault(s, col) 
+            else: 
+                RGB_colors.setdefault("NaN", NaN_color)
+            
+        # Define list with RGB color for each well
+        RGB_per_well = []    
+        for dp in well_color_data:
+            if not pd.isnull(dp):
+                RGB_per_well.append(RGB_colors[dp])
+            else:
+                RGB_per_well.append(RGB_colors["NaN"])
+            
+        # DEFINE GRID FOR WELLS
+        # 1 - define the lower and upper limits 
+        minX, maxX, minY, maxY = 0, self._n_columns*step, 0, self._n_rows*step
+        # 2 - create one-dimensional arrays for x and y
+        x = np.arange(minX, maxX, step)
+        y = np.arange(minY, maxY, step)
+        # 3 - create a mesh based on these arrays
+        X, Y = np.meshgrid(x, y)
+
+        # PLOT
+        # variables for scatter plot
+        bubble_size = well_size
+        grid_col = (1,1,1)
+        edge_color = (0.5, 0.5, 0.5)
+
+        # Style and size
+        fig = plt.figure(dpi=100)
+        plt.style.use('bmh')
+        fig.set_size_inches(11.69, 8.27)
+        ax = fig.add_subplot(111)
+
+        # PLOT WELLS 
+        well_count = 1
+        N_wells_to_use = len(well_label_data)
+        
+        # for i in range(n_rows-1,-1,-1):
+        #     for j in range(0,n_cols): 
+        # use itertools to create compound iterator instead of above
+        for i,j in itertools.product(range(self._n_rows-1, -1, -1), range(0, self._n_columns)):
+            
+            x_i = X[i,j]
+            y_i = Y[i,j]
+            
+            if well_count > N_wells_to_use: 
+                info_str = ""
+                col = NaN_color
+            else:     
+                info_str = f"{well_label_data[well_count-1]}"                
+                col = RGB_per_well[well_count-1]
+            
+            ax.annotate(info_str, (x_i, y_i), 
+                        horizontalalignment='center', 
+                        verticalalignment='center',
+                        rotation=rotation,
+                        fontsize=fontsize)
+        
+            ax.scatter(x_i, y_i, 
+                    bubble_size,color=col, 
+                    alpha=alpha_val, 
+                    edgecolors=edge_color)
+            
+            well_count += 1
+        
+        # end loop ------------------------
+        
+        
+        # LEGENDS 
+        # Create dummy plot to map legends, save plot handles to list
+        lh = []
+        for key,color in RGB_colors.items():
+            lh.append(ax.scatter([],[],bubble_size*0.8, 
+                                color=color, label=key, 
+                                alpha=alpha_val, 
+                                edgecolors=edge_color))
+                    
+        # Add a legend
+        # Adjust position depending on number of legend keys to show
+        pos = ax.get_position()
+        if len(levels) < 6:
+            ax.set_position([pos.x0, pos.y0*1.8, pos.width, pos.height*0.9])
+            ax.legend(
+                handles = lh,
+                bbox_to_anchor=(0.15, -0.15, 0.7, 1.3),
+                loc='lower center', 
+                frameon = False,
+                labelspacing=4,
+                ncol=4
+                )
+        else:
+            ax.set_position([pos.x0, pos.y0*2, pos.width, pos.height*0.8])
+            ax.legend(
+                handles = lh,
+                bbox_to_anchor=(0.15, -0.25, 0.7, 1.3),
+                loc='lower center', 
+                frameon = False,
+                labelspacing=1,
+                ncol=8
+                )
+
+        # FIG PROPERTIES
+        # X axis
+        ax.set_xticks(x)
+        ax.set_xticklabels(self.columns)
+        ax.xaxis.grid(color=grid_col, linestyle='dashed', linewidth=1)
+        ax.set_xlim(-1*x.max()*0.05,x.max()*1.05)
+
+        # Y axis
+        ax.set_yticks(y)
+        ax.set_yticklabels(self.rows[::-1])
+        ax.yaxis.grid(color=grid_col, linestyle='dashed', linewidth=1)
+        ax.set_ylim(-1*y.max()*0.07,y.max()*1.07)
+
+        # 
+        ax.set_title(title_str)
+        
+        # Hide grid behind graph elements
+        ax.set_axisbelow(True)
+                
+        return fig
     
         
     
@@ -464,148 +632,6 @@ class Nisse:
                        **kwargs)
         
         
-    def plateplot(self, well_label_data: list, well_color_data: list,
-                fontsize: int = 8,
-                rotation: int = 0,
-                colormap: str = "tab20",
-                NaN_color: tuple = (1,1,1),
-                step = 10,
-                title_str = '',
-                alpha_val = 0.7,
-                well_size = 1200
-                ):
-
-        # DEFINE COLORS TO USE
-        levels = pd.unique(well_color_data)    
-        print(f"Number of colors to use: {len(levels)}")
-        
-        RGB_colors = {}
-        for i,s in enumerate(levels): 
-            col = mpl.colormaps[colormap](i)[0:3] #get RGB values for i-th color in colormap
-            if not pd.isnull(s):
-                RGB_colors.setdefault(s, col) 
-            else: 
-                RGB_colors.setdefault("NaN", NaN_color)
-            
-        # Define list with RGB color for each well
-        RGB_per_well = []    
-        for dp in well_color_data:
-            if not pd.isnull(dp):
-                RGB_per_well.append(RGB_colors[dp])
-            else:
-                RGB_per_well.append(RGB_colors["NaN"])
-            
-        # DEFINE GRID FOR WELLS
-        # 1 - define the lower and upper limits 
-        minX, maxX, minY, maxY = 0, self._n_columns*step, 0, self._n_rows*step
-        # 2 - create one-dimensional arrays for x and y
-        x = np.arange(minX, maxX, step)
-        y = np.arange(minY, maxY, step)
-        # 3 - create a mesh based on these arrays
-        X, Y = np.meshgrid(x, y)
-
-        # PLOT
-        # variables for scatter plot
-        bubble_size = well_size
-        grid_col = (1,1,1)
-        edge_color = (0.5, 0.5, 0.5)
-
-        # Style and size
-        fig = plt.figure(dpi=100)
-        plt.style.use('bmh')
-        fig.set_size_inches(11.69, 8.27)
-        ax = fig.add_subplot(111)
-
-        # PLOT WELLS 
-        well_count = 1
-        N_wells_to_use = len(well_label_data)
-        
-        # for i in range(n_rows-1,-1,-1):
-        #     for j in range(0,n_cols): 
-        # use itertools to create compound iterator instead of above
-        for i,j in itertools.product(range(self._n_rows-1, -1, -1), range(0, self._n_columns)):
-            
-            x_i = X[i,j]
-            y_i = Y[i,j]
-            
-            if well_count > N_wells_to_use: 
-                info_str = ""
-                col = NaN_color
-            else:     
-                info_str = f"{well_label_data[well_count-1]}"                
-                col = RGB_per_well[well_count-1]
-            
-            ax.annotate(info_str, (x_i, y_i), 
-                        horizontalalignment='center', 
-                        verticalalignment='center',
-                        rotation=rotation,
-                        fontsize=fontsize)
-        
-            ax.scatter(x_i, y_i, 
-                    bubble_size,color=col, 
-                    alpha=alpha_val, 
-                    edgecolors=edge_color)
-            
-            well_count += 1
-        
-        # end loop ------------------------
-        
-        
-        # LEGENDS 
-        # Create dummy plot to map legends, save plot handles to list
-        lh = []
-        for key,color in RGB_colors.items():
-            lh.append(ax.scatter([],[],bubble_size*0.8, 
-                                color=color, label=key, 
-                                alpha=alpha_val, 
-                                edgecolors=edge_color))
-                    
-        # Add a legend
-        # Adjust position depending on number of legend keys to show
-        pos = ax.get_position()
-        if len(levels) < 6:
-            ax.set_position([pos.x0, pos.y0*1.8, pos.width, pos.height*0.9])
-            ax.legend(
-                handles = lh,
-                bbox_to_anchor=(0.15, -0.15, 0.7, 1.3),
-                loc='lower center', 
-                frameon = False,
-                labelspacing=4,
-                ncol=4
-                )
-        else:
-            ax.set_position([pos.x0, pos.y0*2, pos.width, pos.height*0.8])
-            ax.legend(
-                handles = lh,
-                bbox_to_anchor=(0.15, -0.25, 0.7, 1.3),
-                loc='lower center', 
-                frameon = False,
-                labelspacing=1,
-                ncol=8
-                )
-
-        # FIG PROPERTIES
-        # X axis
-        ax.set_xticks(x)
-        ax.set_xticklabels(self.columns)
-        ax.xaxis.grid(color=grid_col, linestyle='dashed', linewidth=1)
-        ax.set_xlim(-1*x.max()*0.05,x.max()*1.05)
-
-        # Y axis
-        ax.set_yticks(y)
-        ax.set_yticklabels(self.rows[::-1])
-        ax.yaxis.grid(color=grid_col, linestyle='dashed', linewidth=1)
-        ax.set_ylim(-1*y.max()*0.07,y.max()*1.07)
-
-        # 
-        ax.set_title(title_str)
-        
-        # Hide grid behind graph elements
-        ax.set_axisbelow(True)
-                
-        return fig
-
-    
 
 class Study:
     
@@ -628,8 +654,10 @@ class Study:
         self.study_specimens = 0
         self.N_batches = 0
         
+        
     def __iter__(self):
         self._iter_count = 0
+        
         
     def __next__(self):
         if self._iter_count < self.N_batches:
@@ -643,6 +671,7 @@ class Study:
     
     def __repr__(self):
         return f"Study({self.study_name})"
+
 
     def __str__(self):
         return f"{self.study_name}\n {self.study_specimens} on {self.N_batches}"
@@ -674,10 +703,6 @@ class Study:
             
         self.specimen_records_df = records
           
-            
-    
-    def distribute_to_plates():
-        pass
     
     def add_specimens_to_plate(self, study_plate: object, specimen_samples_df: object) -> object:
         
@@ -687,18 +712,17 @@ class Study:
         N_specimens_left = len(specimen_samples_df)
         plate_specimen_count = 0
         
-        
         for i, well in enumerate(study_plate):
             
             if well.metadata["sample_code"] == "S": 
-                # add new metadata to well
+                # add metadata key (and values) for each column in dataframe
                 for col in columns:
-                    
                     well.metadata[col] = specimen_samples_df[col][plate_specimen_count]
                     
                 plate_specimen_count += 1
                 
             else:
+                # add metadata key and nan value for each column in dataframe
                 for col in columns:
                     well.metadata[col] = np.nan
                     
@@ -712,145 +736,53 @@ class Study:
                 
         # --- END OF FOOR LOOP ---
     
-    def save_batch_layout_lists():
+    
+    def to_layout_lists():
         pass
     
-    def save_batch_layout_figures():
+    
+    def to_layout_figures():
         pass
     
     
     def create_batches(self, plate_layout : object) -> None: 
             
-            batch_count = 1
-            batches = []
-            
-            # get specimen data from study list
-            
-            specimen_df_copy = self.specimen_records_df.copy()
-            
-            
-            while specimen_df_copy.shape[0] > 0:
+        batch_count = 1
+        batches = []
+        
+        # get specimen data from study list
+        
+        specimen_df_copy = self.specimen_records_df.copy()
+        
+        
+        while specimen_df_copy.shape[0] > 0:
 
-                study_plate = copy.deepcopy(plate_layout)
-                study_plate.plate_id = batch_count
-                               
-                # extract max specimen samples that will fit on plate; select from top and remove them from original DF
-                sel = specimen_df_copy.head(study_plate.specimen_capacity)
-                specimen_df_copy.drop(index=sel.index, inplace=True) 
-                
-                # reset index to so that rows always start with index 0
-                sel.reset_index(inplace=True, drop=True)
-                specimen_df_copy.reset_index(inplace=True, drop=True)
-
-                # add specimen to plate
-                logger.debug(f"Populating plate {batch_count}")
-                study_plate = self.add_specimens_to_plate(study_plate, sel)
-                
-                batches.append(study_plate)
-                
-                batch_count += 1
-
-            # --- END OF WHILE LOOP ---
-            
-            self.batches = batches
-            self.N_batches = batch_count - 1
-
-            logger.info(f"Finished distributing samples to plates; {self.N_batches} batches created.")
-            
-            
-    # def create_batches(self, specimen_df: object, plate : object) -> None: 
-    #         """Distributes specimen samples in <specimen_df> together with QC samples on plates according to the QC sample scheme.
-            
-    #         Created attributes. 
-    #         Each batch (plate) is a pandas dataframe stored in a list in the object attribute 'batches_df', and ''
-
-    #         Args:
-    #             specimen_df (object): pandas dataframe where each row is a specimen sample
-    #         """
-            
-    #         batch_count = 1
-    #         batches_df_list = []
-            
-    #         # get specimen data from study list
-            
-    #         specimen_df_copy = specimen_df.copy()
-    #         spec_count = 0
-            
-    #         while specimen_df_copy.shape[0] > 0:
-
-    #             # extract max specimen samples that will fit on plate; select from top and remove them from original DF
-    #             sel = specimen_df_copy.head(self.N_specimens)
-    #             specimen_df_copy.drop(index=sel.index, inplace=True) 
-                
-    #             # reset index to so that rows always start with index 0
-    #             sel.reset_index(inplace=True, drop=True)
-    #             specimen_df_copy.reset_index(inplace=True, drop=True)
-
-    #             # keep track on how many wells we should use per batch
-    #             N_specimens_left = len(sel)
-
-    #             # populate batch dict 
-    #             batch_temp = {
-    #                 "well_name": [],
-    #                 "well_coords": [],
-    #                 "sample_name": [],
-    #                 "batch_number": [],
-    #             }
-                
-    #             # add keys from dataframe columns
-    #             columns = specimen_df.columns
-    #             for col in columns:
-    #                 batch_temp.setdefault(col, [])
-                
-                
-    #             batch = batch_temp.copy()
-                
-    #             # For some reason we have to reset the batch dict like this
-    #             for key in batch.keys():
-    #                 batch[key]=[]
-
-    #             for i, sample in enumerate(self.sample_order):
-                    
-    #                 #print(f"BATCH {batch_count}, SAMPLE {sample}")
-    #                 sample_type, sample_number = sample.split("_")
-                    
-    #                 if sample_type == "S" and (int(sample_number) > N_specimens_left):
-    #                     logger.debug(f"Finished distributing specimen samples to plate wells. Last specimen is {self.sample_order[i-1]}")
-    #                     break
-                                    
-    #                 batch['well_name'].append( str().join(self.well_names[i]) )
-    #                 batch['well_coords'].append(self.well_coordinates[i])
-    #                 batch['sample_name'].append(self.sample_order[i])
-    #                 batch['batch_number'].append(batch_count)
-                    
-    #                 index = int(sample_number)-1
-                    
-    #                 if sample_type == "S":
-    #                     for col in columns:
-    #                         batch[col].append( sel[col][index])
+            study_plate = copy.deepcopy(plate_layout)
+            study_plate.plate_id = batch_count
                             
-    #                     spec_count += 1
-    #                 else:
-    #                     for col in columns: 
-    #                         batch[col].append(np.nan)
-                        
-    #             # --- END OF FOOR LOOP ---
+            # extract max specimen samples that will fit on plate; select from top and remove them from original DF
+            sel = specimen_df_copy.head(study_plate.specimen_capacity)
+            specimen_df_copy.drop(index=sel.index, inplace=True) 
+            
+            # reset index to so that rows always start with index 0
+            sel.reset_index(inplace=True, drop=True)
+            specimen_df_copy.reset_index(inplace=True, drop=True)
 
-    #             batch_df = pd.DataFrame(batch)
-                
-    #             batches_df_list.append(batch_df)
-                
-    #             batch_count += 1
+            # add specimen to plate
+            logger.debug(f"Populating plate {batch_count}")
+            study_plate = self.add_specimens_to_plate(study_plate, sel)
+            
+            batches.append(study_plate)
+            
+            batch_count += 1
 
-    #         # --- END OF WHILE LOOP ---
-            
-    #         self.batches_df = batches_df_list
-    #         self.N_batches = len(batches_df_list)
-            
-    #         # concatenate all DFs to one long DF
-    #         self.all_batches_df = pd.concat(batches_df_list).reset_index()
-            
-    #         logger.info(f"Finished distributing samples onto plates; {self.N_batches} batches created.")
+        # --- END OF WHILE LOOP ---
+        
+        self.batches = batches
+        self.N_batches = batch_count - 1
+
+        logger.info(f"Finished distributing samples to plates; {self.N_batches} batches created.")
+        
 
 
     def batch_to_file(self, 

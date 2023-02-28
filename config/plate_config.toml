@@ -7,9 +7,9 @@ run_QC_after_n_specimens = 11
 
     [QC.names] # types of QC samples we will use
     #
-    EC = "EC: External Control (matrix)"
-    PB = "PB: Paper Blank"
-    PO = "PO: Pooled specimens"
+    EC = "EC: External_Control_(matrix)"
+    PB = "PB: Paper_Blank"
+    PO = "PO: Pooled_specimens"
 
     [QC.scheme] # when and how often to use QC samples in QC rounds
     #
