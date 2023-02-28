@@ -1,13 +1,25 @@
 import pytest
+import os
+
+
 from plate_layout.plate_layout import Plate
 from plate_layout.plate_layout import Well
 from plate_layout.plate_layout import Study
 from plate_layout.plate_layout import QCplate
 
+config_folder = os.path.abspath(os.path.join(os.getcwd(), "config/"))
+config_file = "plate_config.toml"
+config_path = os.path.join(config_folder, config_file)
 
+records_folder = os.path.abspath(os.path.join(os.getcwd(), "data/"))
+
+records_file_xlsx = "fake_case_control_Npairs_523_Ngroups_5.xlsx"
+records_path_xlsx = os.path.join(records_folder, records_file_xlsx)
+records_file_csv = "fake_case_control_Npairs_523_Ngroups_5.csv"
+records_path_csv = os.path.join(records_folder, records_file_csv)
 #@pytest.fixture
 
-# Well class
+# Well CLASS
 def test_should_create_well():
     well =  Well("A0", (0,0)) 
     
@@ -15,11 +27,7 @@ def test_should_create_well():
     assert well.coordinate == (0,0)
     
 
-def test_should_set_metadata():
-    pass
-
-
-# Plate
+# Plate CLASS
 def test_should_create_plate_from_tuple():
     plate_96 = Plate((8,12))
     
@@ -92,12 +100,14 @@ def test_should_return_length_of_plate():
     plate_96 = Plate((8,12))
     assert len(plate_96) == 96
       
+      
 def test_should_get_well_by_index():
     plate_96 = Plate((8,12))
     
     well = plate_96.wells[0]
     
     assert plate_96[0].name == well.name 
+    
     
 def test_should_get_well_by_name():
     plate_96 = Plate((8,12))
@@ -130,6 +140,7 @@ def test_should_get_well_by_coordinate():
     assert plate_96[(0,11)].name == plate_96[95].name
     assert plate_96[(0,11)].coordinate == plate_96[95].coordinate
 
+
 def test_should_get_well_by_key():
     plate_96 = Plate((8,12))
     
@@ -146,41 +157,117 @@ def test_should_get_well_by_key():
     assert plate_96[95].coordinate == plate_96[95].coordinate
 
 
-def test_should_set_well_by_key():
-    assert 1 == 2, "REMINDER: This test is not written yet" 
+def test_should_set_new_well_by_name():
+    plate_96 = Plate((8,12))
+    test_well = Well("A_12", (7,11))
+    test_well.metadata["barcode"] = 1666
+    
+    assert plate_96[11].metadata.get("barcode",0) != 1666
+    
+    plate_96["A_12"] = test_well
+    
+    assert plate_96[11].name == "A_12"
+    assert plate_96[11].metadata["barcode"] == 1666
+
+
+def test_should_set_new_well_by_coordinate():
+    plate_96 = Plate((8,12))
+    test_well = Well("A_12", (7,11))
+    test_well.metadata["barcode"] = 1666
+    
+    assert plate_96[11].metadata.get("barcode",0) != 1666
+    
+    plate_96[(7,11)] = test_well
+    
+    assert plate_96[11].name == "A_12"
+    assert plate_96[11].metadata["barcode"] == 1666
+
+
+def test_should_set_new_well_by_index_and_update_well_position():
+    plate_96 = Plate((8,12))
+    test_well = Well("G_1", (15,15))
+    
+    plate_96[11] = test_well
+    
+    assert plate_96[11].name == "A_12"
+    assert plate_96[(7,11)].coordinate == (7,11)
     
 
-# qcplate subclass
-def test_should_create_qcplate():
-    qcplate = QCplate("../config/plate_config.toml", (8,12), plate_id=3)
+# QCplate SUBCLASS
+def test_should_raise_error_on_missing_config_file():
+    
         
-    assert qcplate.capacity == 96
+    with pytest.raises(FileExistsError) as exception_info:
+        print(exception_info)
+        qcplate = QCplate("my_config", (8,12), plate_id=3)
+    
+    assert exception_info.value.args[0] == "my_config"
+
+    
+def test_should_create_QCplate():
+    qcplate = QCplate(config_path, (8,12), plate_id = 3)
+    
+    assert qcplate.config["QC"]["run_QC_after_n_specimens"] == 11
     assert qcplate.plate_id == 3
-    #assert qcplate.config
+    assert qcplate._QC_rounds[1]["sequence"][0] == ("PB",1)
+    assert qcplate._QC_rounds[1]["sequence"][1] == ("EC",2)
 
-def test_should_create_QC_sequences():
-    qcplate = QCplate("../config/plate_config.toml", (8,12), plate_id=3)
-    
-    qcplate.create_QC_sequences()
-    
-    assert 1 ==1 
+def test_should_get_well_QC_info_from_well_name():
+    qcplate = QCplate(config_path, (8,12), plate_id = 3)
+
+    assert qcplate["A_1"].metadata["QC"] == True
     
     
-def test_should_create_layout():
-    qcplate = QCplate("../config/plate_config.toml", (8,12), plate_id=3)
-    
-    qcplate.create_plate_layout()
-    
-    assert 1 == 1
+def test_should_get_well_QC_info_from_well_coord():
+    qcplate = QCplate(config_path, (8,12), plate_id = 3)
+
+    assert qcplate[(0,7)].metadata["QC"] == True
 
 
-# study class
-
+# study CLASS
 def test_should_create_empty_study():
     study_name = "CNS_tumor_study"
     my_study = Study(study_name)
     
     assert my_study.name == study_name
+    
+    
+def test_should_import_study_records_csv():
+    study_name = "CNS_tumor_study"
+    my_study = Study(study_name)
+    
+    my_study.load_specimen_records(records_path_csv)
+
+    assert my_study.specimen_records_df.empty == False
+    
+    
+def test_should_import_study_records_xlsx():
+    study_name = "CNS_tumor_study"
+    my_study = Study(study_name)
+    
+    my_study.load_specimen_records(records_path_xlsx)
+
+    assert my_study.specimen_records_df.empty == False   
+    
+    
+def test_should_fail_import_study_records():
+    study_name = "CNS_tumor_study"
+    my_study = Study(study_name)
+    
+    with pytest.raises(FileExistsError) as exception_info:
+        my_study.load_specimen_records("missing_file")
+        
+    assert exception_info.value.args[0] == "missing_file"   
+    
+    
+def test_should_create_batches():
+    study_name = "CNS_tumor_study"
+    my_study = Study(study_name)
+    my_study.load_specimen_records(records_path_xlsx)
+    
+    my_study.create_batches(QCplate(config_path, (8,12)))
+    
+    assert len(my_study.batches) == 14
     
     
     
