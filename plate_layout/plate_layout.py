@@ -361,10 +361,8 @@ class Plate:
              color_metadata_key = None,
              fontsize: int = 8,
             rotation: int = 0,
-            colormap: str = "tab20",
-            NaN_color: tuple = (1,1,1),
             step = 10,
-            title_str = '',
+            title_str = None,
             alpha = 0.7,
             well_size = 1200,
             fig_width = 11.69,
@@ -373,7 +371,13 @@ class Plate:
             plt_style = "bmh",
             grid_color = (1,1,1),
             edge_color = (0.5, 0.5, 0.5),
+            legend_bb = (0.15, -0.2, 0.7, 1.3),
+            legend_n_columns = 6
             ) -> object:
+        
+        # Define title 
+        if title_str is None:
+            title_str = f"Plate {self.plate_id}, showing {annotation_metadata_key} colored by {color_metadata_key}"
              
         # DEFINE COLORS FOR METADATA VALUES  
         RGB_colors = self.assign_well_color(color_metadata_key)
@@ -432,29 +436,19 @@ class Plate:
         
                 # Add a legend
         # Adjust position depending on number of legend keys to show
-        pos = ax.get_position()
-        if len(RGB_colors) < 6:
-            ax.set_position([pos.x0, pos.y0*1.8, pos.width, pos.height*0.9])
-            ax.legend(
+        pos = ax.get_position()       
+        ax.set_position([pos.x0, pos.y0*2, pos.width, pos.height*0.8])
+        ax.legend(
                 handles = lh,
-                bbox_to_anchor=(0.15, -0.15, 0.7, 1.3),
-                loc='lower center', 
-                frameon = False,
-                labelspacing=4,
-                ncol=4
-                )
-        else:
-            ax.set_position([pos.x0, pos.y0*2, pos.width, pos.height*0.8])
-            ax.legend(
-                handles = lh,
-                bbox_to_anchor=(0.15, -0.25, 0.7, 1.3),
+                bbox_to_anchor=legend_bb,
                 loc='lower center', 
                 frameon = False,
                 labelspacing=1,
-                ncol=8
-                )
+                ncol=legend_n_columns
+            )
             
         # FIG PROPERTIES
+
         # X axis
         ax.set_xticks(x)
         ax.set_xticklabels(self.columns)
@@ -470,6 +464,7 @@ class Plate:
         # Hide grid behind graph elements
         ax.set_axisbelow(True)
         
+        ax.set_title(title_str)
         #return fig
         
         
