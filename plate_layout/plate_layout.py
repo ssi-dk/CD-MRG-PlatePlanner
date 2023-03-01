@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import itertools, os, tomli, glob, copy
+import itertools, os, tomli, glob, copy, datetime
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
@@ -9,8 +9,16 @@ from .logger import logger
 
 np.set_printoptions(threshold=np.inf)
 np.set_printoptions(linewidth=np.inf)
-             
+
+# TODO
+# Try out Sphinx to generate automatic(?) docs for the module
+
        
+# TODO ? 
+# Add @dataclass decorator to Well 
+# - we can then get access to methods such as JSON conversion, 
+# nice representation, make immutable, __init__, __le__, __eq__, __ge__ etc
+# could be useful to have nice syntax comparing well position 
 
 class Well:
     """
@@ -82,6 +90,9 @@ class Plate:
     _itercount : int # for use in __iter__
 
     
+    # TODO ?
+    # add @singledispatch decorator to allow different implementations of constructor 
+    # for different type of arguments. Current solution no so elegant
     def __init__(self,  *args, plate_id=1, **kwargs) -> None:    
         """_summary_
         
@@ -111,7 +122,7 @@ class Plate:
         
         logger.info(f"Created a plate with {len(self)} wells:")
         logger.debug(f"Canonical well coordinate:\n{self}")
-        logger.debug(f"Well index coordinates:\n{self.plate_to_numpy_array(self._coordinates)}")
+        logger.debug(f"Well index coordinates:\n{self.to_numpy_array(self._coordinates)}")
 
         
     @staticmethod    
@@ -174,11 +185,14 @@ class Plate:
         self._coordinates2index = well_crd_to_index_map
         self._name2index = well_name_to_index_map
         
-          
+    ## LENGTH 
+    # len(plate) shuld return the number of wells the plate has defined = plate capacity     
     def __len__(self) -> int:
         return len(self.wells)
     
-    
+    ## ITERATOR
+    # make class to work as an iteror, eg we can iterate over the wells in the class
+    # "for well in plate| 
     def __iter__(self) -> list:
         self._itercount = 0
         return self
@@ -192,11 +206,12 @@ class Plate:
         else:
             raise StopIteration
     
+    ## IN
+    # check if well is contained in plate
+    def __contains__(self):
+        return NotImplemented
     
-    def __contains__(self, index):
-        pass
-    
-    
+    ## Plate[index/coordinate/name] should return the well from plate
     def __getitem__(self, key) -> object:
         
         key_type = type(key)
@@ -212,7 +227,7 @@ class Plate:
         
         return self.wells[index]
         
-        
+    ## Allow to set a new well object to Plate using Plate[] = Well(..)    
     def __setitem__(self, key, well_object) -> None:
         
         key_type = type(key)
@@ -235,13 +250,15 @@ class Plate:
         
     def __delitem__(self):
         # TODO
-        pass
+        return NotImplemented
     
+    # print(plate)
     def __str__(self):
-        return f"{self.plate_to_numpy_array(self._alphanumerical_coordinates)}"
+        return f"{self.to_numpy_array(self._alphanumerical_coordinates)}"
     
+    # plate
     def __repr__(self):
-        return f"Plate(({len(self.rows)},{len(self.columns)})"
+        return f"Plate(({len(self.rows)},{len(self.columns)}), plate_id={self.plate_id})"
     
     
     def update_well_position(self, index):
@@ -250,10 +267,14 @@ class Plate:
         self.wells[index].metadata["index"] = index
         
     
-    def plate_to_numpy_array(self, data: list) -> object:
+    def to_numpy_array(self, data: list) -> object:
          
         plate_array = np.empty((len(self.rows), len(self.columns)), 
                                dtype=object)
+        
+        if len(data) > self.capacity:
+            Warning(f"Number of wells in plate is {self.capacity}, but data contains {len(data)} values")
+            return plate_array
 
         for i, well in enumerate(self._coordinates):
             r, c = well[0], well[1]
@@ -271,9 +292,9 @@ class Plate:
             self.wells[i].metadata["sample_name"] = f"{self.specimen_code}{i+1}"
             
             
-    def print_layout(self):
+    def print_layout(self) -> None:
         sample_names = self.get("sample_name")
-        print(self.plate_to_numpy_array(sample_names)) 
+        print(self.to_numpy_array(sample_names)) 
         
         
     def get(self, metadata_key) -> list:
@@ -283,12 +304,27 @@ class Plate:
         elif metadata_key == "coordinates":
             return [well.coordinate for well in self]
         else:
-            return [well.metadata[metadata_key] for well in self]
+            return [well.metadata.get(metadata_key, np.nan) for well in self]
         
     
-    def print_metadata(self, metadata_key):
+    def print_metadata(self, metadata_key) -> None:
         plate_metadata = self.get(metadata_key)
-        print(self.plate_to_numpy_array(plate_metadata)) 
+        print(self.to_numpy_array(plate_metadata)) 
+        
+        
+    def available_metadata(self) -> dict:
+        metadata = {}
+        for well in self:
+            for key in well.metadata.keys():
+                metadata.setdefault(key, [])
+                metadata[key].append(well.metadata["index"])
+                
+        return metadata
+    
+    
+    def get_metadata_as_numpy_array(self, metadata_key):
+        metadata = self.get(metadata_key)
+        return self.to_numpy_array(metadata)
         
             
     def plateplot(self, well_label_data: list, well_color_data: list,
@@ -300,7 +336,7 @@ class Plate:
                 title_str = '',
                 alpha_val = 0.7,
                 well_size = 1200
-                ):
+                ) -> object:
 
         # DEFINE COLORS TO USE
         levels = pd.unique(well_color_data)    
@@ -434,8 +470,8 @@ class Plate:
     
         
     
-# A plate with QC samples is a subclass of a Plate
-class QCplate(Plate):
+# A plate with QC samples is a subclass of a Plate class
+class QCPlate(Plate):
     """_summary_
     Class that represents a multiwell plate where some wells should 
     contain quality control samples according to the scheme defined 
@@ -459,16 +495,12 @@ class QCplate(Plate):
         
         if self.config is not None: 
             self.create_QC_plate_layout()
-        
-        
-        
-    def __str__(self):
-        return f"{self.plate_to_numpy_array(self._alphanumerical_coordinates)}"
     
     
     def __repr__(self):
-        pass
-       
+        return f"QCPlate(({len(self.rows)},{len(self.columns)}), plate_id={self.plate_id})"
+    
+          
        
     def load_config_file(self, config_file: str = None):
         
@@ -638,6 +670,15 @@ class Nisse:
         
 
 class Study:
+    """_summary_
+
+    Raises:
+        StopIteration: _description_
+        FileExistsError: _description_
+
+    Returns:
+        _type_: _description_
+    """
     
     name = str
     plate_layout = object
@@ -648,22 +689,28 @@ class Study:
     
     _batch_count : int
     _iter_count : int
+    _seed = 1234 # seed number for the random number generator in case randomization of specimens should be reproducible
     
     
     def __init__(self, 
                  study_name=None, 
                  ):
         
+        if study_name is None:
+            study_name = f"Study_{datetime.date}"
+            
         self.name = study_name
         self.study_specimens = 0
         self.N_batches = 0
+        self.batches = []
         
         
-    def __iter__(self):
+    def __iter__(self) -> None:
         self._iter_count = 0
+        return self
         
         
-    def __next__(self):
+    def __next__(self) -> object:
         if self._iter_count < self.N_batches:
             plate_to_return = self.batches[self._iter_count]
             self._iter_count += 1
@@ -674,11 +721,11 @@ class Study:
         
     
     def __repr__(self):
-        return f"Study({self.study_name})"
+        return f"Study({self.name})"
 
 
     def __str__(self):
-        return f"{self.study_name}\n {self.study_specimens} on {self.N_batches}"
+        return f"{self.name}\n {self.study_specimens} on {self.N_batches}"
 
     
     # def __contains__():
@@ -707,6 +754,12 @@ class Study:
             
         self.specimen_records_df = records
           
+          
+    def randomize_specimen_order(self, 
+                                 case_control_group_column_name: str = None,
+                                 reproducable : bool = True) -> None:
+        return NotImplemented
+    
     
     def add_specimens_to_plate(self, study_plate: object, specimen_samples_df: object) -> object:
         
@@ -741,11 +794,11 @@ class Study:
         # --- END OF FOOR LOOP ---
     
     
-    def to_layout_lists():
+    def to_layout_lists(self, metadata: list = None) -> None:
         pass
     
     
-    def to_layout_figures():
+    def to_layout_figures(self, metadata: list = None) -> None:
         pass
     
     
