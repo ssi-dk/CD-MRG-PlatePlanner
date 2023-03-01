@@ -220,8 +220,6 @@ def test_should_get_well_metadata():
     
 def test_should_show_nan_in_get_for_missing_well_keys():
     assert 1 == 2, "Not implemented"
- 
-
 
 
 # QCplate SUBCLASS
@@ -299,6 +297,35 @@ def test_should_create_batches():
     my_study.create_batches(QCPlate(config_path, (8,12)))
     
     assert len(my_study.batches) == 14
+    
+def test_should_get_plate():
+    study_name = "CNS_tumor_study"
+    my_study = Study(study_name)
+    my_study.load_specimen_records(records_path_xlsx)
+    my_study.create_batches(QCPlate(config_path, (8,12)))
+    
+    assert my_study[0].plate_id == 1
+    assert my_study[4].plate_id == 5
+    assert my_study[13].plate_id == 14
+    
+    
+def test_should_assign_colors_to_wells_by_metadata():
+    study_name = "CNS_tumor_study"
+    my_study = Study(study_name)
+    my_study.load_specimen_records(records_path_xlsx)
+    my_study.create_batches(QCPlate(config_path, (8,12)))
+    
+    plate = my_study[0]
+    rgbs = plate.define_metadata_colors("organ")
+    
+    plate.assign_well_color("organ")
+    
+    assert plate[0].metadata["color"] == rgbs["NaN"]
+    assert plate[2].metadata["color"] == rgbs["Parotid glands"]
+    assert plate[95].metadata["color"] == rgbs["Tendons"]
+
+
+    
     
     
     
