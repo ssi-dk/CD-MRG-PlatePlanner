@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import itertools, os, tomli, glob, copy, datetime
+import setuptools
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
@@ -33,14 +34,16 @@ class Well:
                  coordinate=(int, int), 
                  index = None,
                  plate_id = None,
-                 metadata = None) -> None:
+                 metadata = None,
+                 color = None) -> None:
         
         self.name = name
         self.coordinate = coordinate
         
         if metadata is None:
             metadata = {"index": index,
-                    "plate_id": plate_id}
+                    "plate_id": plate_id,
+                    "color": color}
     
         self.metadata = metadata
      
@@ -58,36 +61,27 @@ class Plate:
     """_summary_
     A class to represent a multiwell plate. 
     
-    Attributes
-    
-    rows
-    columns
-    well_coordinates
-    well_names
-    
-    plate_well_names
-    plate_well_coordinates
-    
-    Methods
-    
-    
     """
     
-    specimen_code : str = "S"
-    specimen_base_name : str = "Specimen"
+    # class variables
+    _specimen_code : str = "S"
+    _specimen_base_name : str = "Specimen"
+    _colormap : str = "tab20" # for plotting using matplotlib
+    _NaN_color : tuple = (1, 1, 1)
     
-    # "public"
+    # "public" variables 
     plate_id : int
     rows: list 
     columns: list 
     wells: list # list of well objects
     
-    # "private"
+    # "private" variables
     _coordinates: list # list of tuples with a pair of ints (row, column)
     _alphanumerical_coordinates: list # list of strings for canonical naming of plate coordnates, i.e A1, A2, A3, ..., B1, B2, etc
     _coordinates2index : dict # map well index to well coordinate
     _name2index : dict # map well index to well name
     _itercount : int # for use in __iter__
+    
 
     
     # TODO ?
@@ -175,7 +169,8 @@ class Plate:
                 Well(coordinate=index_crd,
                      name=name_crd,
                      index=i, 
-                     plate_id=self.plate_id)
+                     plate_id=self.plate_id,
+                     color=self._NaN_color)
             )
             
             well_crd_to_index_map[index_crd] = i
@@ -287,9 +282,9 @@ class Plate:
         # set metadata for wells that are for specimen samples
         for i in range(0,self.capacity):
             self.wells[i].metadata["QC"] = False
-            self.wells[i].metadata["sample_code"] = self.specimen_code
-            self.wells[i].metadata["sample_type"] = self.specimen_base_name
-            self.wells[i].metadata["sample_name"] = f"{self.specimen_code}{i+1}"
+            self.wells[i].metadata["sample_code"] = self._specimen_code
+            self.wells[i].metadata["sample_type"] = self._specimen_base_name
+            self.wells[i].metadata["sample_name"] = f"{self._specimen_code}{i+1}"
             
             
     def print_layout(self) -> None:
@@ -304,7 +299,7 @@ class Plate:
         elif metadata_key == "coordinates":
             return [well.coordinate for well in self]
         else:
-            return [well.metadata.get(metadata_key, np.nan) for well in self]
+            return [well.metadata.get(metadata_key, "NaN") for well in self]
         
     
     def print_metadata(self, metadata_key) -> None:
@@ -322,111 +317,123 @@ class Plate:
         return metadata
     
     
-    def get_metadata_as_numpy_array(self, metadata_key):
+    def get_metadata_as_numpy_array(self, metadata_key : str) -> object:
         metadata = self.get(metadata_key)
         return self.to_numpy_array(metadata)
+    
+    
+    def define_metadata_colors(self, metadata_key : str) -> dict:
+        # get number of colors needed == number of (discrete) values represented in wells with metadata_key
+        metadata_categories = np.unique(self.get(metadata_key))  
         
-            
-    def plateplot(self, well_label_data: list, well_color_data: list,
-                fontsize: int = 8,
-                rotation: int = 0,
-                colormap: str = "tab20",
-                NaN_color: tuple = (1,1,1),
-                step = 10,
-                title_str = '',
-                alpha_val = 0.7,
-                well_size = 1200
-                ) -> object:
-
-        # DEFINE COLORS TO USE
-        levels = pd.unique(well_color_data)    
-        print(f"Number of colors to use: {len(levels)}")
+        N_colors = len(metadata_categories)
         
         RGB_colors = {}
-        for i,s in enumerate(levels): 
-            col = mpl.colormaps[colormap](i)[0:3] #get RGB values for i-th color in colormap
-            if not pd.isnull(s):
+        for i,s in enumerate(metadata_categories): 
+            col = mpl.colormaps[self._colormap](i)[0:3] #get RGB values for i-th color in colormap
+            if s != "NaN":
                 RGB_colors.setdefault(s, col) 
             else: 
-                RGB_colors.setdefault("NaN", NaN_color)
+                RGB_colors.setdefault("NaN", self._NaN_color)
+        
+        logger.debug(f"Metadata {metadata_key} has {N_colors} values: {metadata_categories}.")
+        logger.debug(f"Assigning {N_colors} colors from colormap {self._colormap} to metadata {metadata_key} as:")
+        
+        key_length = np.max(list(map(len,metadata_categories)))
+        
+        for key,value in RGB_colors.items():
+            logger.debug(f"{key:{key_length}}: ({value[0]:.2f}, {value[1]:.2f}, {value[2]:.2f})")
+      
+        return RGB_colors
+    
+    
+    def assign_well_color(self, metadata_key : str) -> dict:
+        RGB_colors = self.define_metadata_colors(metadata_key)
+        
+        # assign well color for each well according to color scheme defined above
+        for well in self:
+            key = well.metadata[metadata_key]
+            well.metadata["color"] = RGB_colors[key]
             
-        # Define list with RGB color for each well
-        RGB_per_well = []    
-        for dp in well_color_data:
-            if not pd.isnull(dp):
-                RGB_per_well.append(RGB_colors[dp])
-            else:
-                RGB_per_well.append(RGB_colors["NaN"])
-            
+        return RGB_colors
+
+    def plot(self, annotation_metadata_key = None, 
+             color_metadata_key = None,
+             fontsize: int = 8,
+            rotation: int = 0,
+            colormap: str = "tab20",
+            NaN_color: tuple = (1,1,1),
+            step = 10,
+            title_str = '',
+            alpha = 0.7,
+            well_size = 1200,
+            fig_width = 11.69,
+            fig_height = 8.27,
+            dpi = 100,
+            plt_style = "bmh",
+            grid_color = (1,1,1),
+            edge_color = (0.5, 0.5, 0.5),
+            ) -> object:
+             
+        # DEFINE COLORS FOR METADATA VALUES  
+        RGB_colors = self.assign_well_color(color_metadata_key)
+        
         # DEFINE GRID FOR WELLS
         # 1 - define the lower and upper limits 
-        minX, maxX, minY, maxY = 0, self._n_columns*step, 0, self._n_rows*step
+        minX, maxX, minY, maxY = 0, len(self.columns)*step, 0, len(self.rows)*step
         # 2 - create one-dimensional arrays for x and y
         x = np.arange(minX, maxX, step)
         y = np.arange(minY, maxY, step)
         # 3 - create a mesh based on these arrays
-        X, Y = np.meshgrid(x, y)
-
-        # PLOT
-        # variables for scatter plot
-        bubble_size = well_size
-        grid_col = (1,1,1)
-        edge_color = (0.5, 0.5, 0.5)
-
-        # Style and size
-        fig = plt.figure(dpi=100)
-        plt.style.use('bmh')
-        fig.set_size_inches(11.69, 8.27)
-        ax = fig.add_subplot(111)
-
-        # PLOT WELLS 
-        well_count = 1
-        N_wells_to_use = len(well_label_data)
+        Xgrid, Ygrid = np.meshgrid(x, y)    
+    
+        # Well size array 
+        size_grid = np.ones_like(Xgrid) * well_size 
         
-        # for i in range(n_rows-1,-1,-1):
-        #     for j in range(0,n_cols): 
-        # use itertools to create compound iterator instead of above
-        for i,j in itertools.product(range(self._n_rows-1, -1, -1), range(0, self._n_columns)):
-            
-            x_i = X[i,j]
-            y_i = Y[i,j]
-            
-            if well_count > N_wells_to_use: 
-                info_str = ""
-                col = NaN_color
-            else:     
-                info_str = f"{well_label_data[well_count-1]}"                
-                col = RGB_per_well[well_count-1]
-            
-            ax.annotate(info_str, (x_i, y_i), 
+        # Get colors for each well based on chosen metadata key (from assign_well_color)
+        well_colors = np.ravel(np.flipud(self.get_metadata_as_numpy_array("color")))
+        
+        # PLOT WELLS AS SCATTER PLOT
+        # Style and size
+        fig = plt.figure(dpi=dpi)
+        plt.style.use(plt_style)
+        fig.set_size_inches(fig_width, fig_height)
+        ax = fig.add_subplot(111)
+        
+        # Create scatter plot
+        ax.scatter(Xgrid, Ygrid,
+                   s=size_grid,
+                   c=well_colors,
+                   alpha=alpha,
+                   edgecolors=edge_color)
+               
+        # Create annotations
+        for well in self:
+            x_i = Xgrid[well.coordinate]
+            y_i = Ygrid[well.coordinate]
+        
+            annotation_label = well.metadata[annotation_metadata_key]
+        
+            ax.annotate(annotation_label, (x_i, y_i), 
                         horizontalalignment='center', 
                         verticalalignment='center',
                         rotation=rotation,
-                        fontsize=fontsize)
-        
-            ax.scatter(x_i, y_i, 
-                    bubble_size,color=col, 
-                    alpha=alpha_val, 
-                    edgecolors=edge_color)
+                        fontsize=fontsize)  
             
-            well_count += 1
-        
-        # end loop ------------------------
-        
-        
+            
         # LEGENDS 
         # Create dummy plot to map legends, save plot handles to list
         lh = []
         for key,color in RGB_colors.items():
-            lh.append(ax.scatter([],[],bubble_size*0.8, 
+            lh.append(ax.scatter([],[],well_size*0.8, 
                                 color=color, label=key, 
-                                alpha=alpha_val, 
+                                alpha=alpha, 
                                 edgecolors=edge_color))
-                    
-        # Add a legend
+        
+                # Add a legend
         # Adjust position depending on number of legend keys to show
         pos = ax.get_position()
-        if len(levels) < 6:
+        if len(RGB_colors) < 6:
             ax.set_position([pos.x0, pos.y0*1.8, pos.width, pos.height*0.9])
             ax.legend(
                 handles = lh,
@@ -446,30 +453,26 @@ class Plate:
                 labelspacing=1,
                 ncol=8
                 )
-
+            
         # FIG PROPERTIES
         # X axis
         ax.set_xticks(x)
         ax.set_xticklabels(self.columns)
-        ax.xaxis.grid(color=grid_col, linestyle='dashed', linewidth=1)
+        ax.xaxis.grid(color=grid_color, linestyle='dashed', linewidth=1)
         ax.set_xlim(-1*x.max()*0.05,x.max()*1.05)
 
         # Y axis
         ax.set_yticks(y)
         ax.set_yticklabels(self.rows[::-1])
-        ax.yaxis.grid(color=grid_col, linestyle='dashed', linewidth=1)
+        ax.yaxis.grid(color=grid_color, linestyle='dashed', linewidth=1)
         ax.set_ylim(-1*y.max()*0.07,y.max()*1.07)
-
-        # 
-        ax.set_title(title_str)
         
         # Hide grid behind graph elements
         ax.set_axisbelow(True)
-                
-        return fig
-    
         
-    
+        #return fig
+        
+        
 # A plate with QC samples is a subclass of a Plate class
 class QCPlate(Plate):
     """_summary_
@@ -640,9 +643,9 @@ class QCPlate(Plate):
         # set metadata for wells that are for specimen samples
         for i, index in enumerate(self._well_inds_specimens):
             self.wells[index].metadata["QC"] = False
-            self.wells[index].metadata["sample_code"] = self.specimen_code
-            self.wells[index].metadata["sample_type"] = self.specimen_base_name
-            self.wells[index].metadata["sample_name"] = f"{self.specimen_code}{i+1}"                
+            self.wells[index].metadata["sample_code"] = self._specimen_code
+            self.wells[index].metadata["sample_type"] = self._specimen_base_name
+            self.wells[index].metadata["sample_name"] = f"{self._specimen_code}{i+1}"                
         
 
 class Nisse:
@@ -728,6 +731,10 @@ class Study:
         return f"{self.name}\n {self.study_specimens} on {self.N_batches}"
 
     
+    def __getitem__(self, index):
+        return self.batches[index]
+    
+    
     # def __contains__():
     #     pass
     
@@ -781,7 +788,7 @@ class Study:
             else:
                 # add metadata key and nan value for each column in dataframe
                 for col in columns:
-                    well.metadata[col] = np.nan
+                    well.metadata[col] = "NaN"
                     
             study_plate[i] = well
             
