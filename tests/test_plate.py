@@ -1,11 +1,10 @@
 import pytest
 import os
 
-
 from plate_layout.plate_layout import Plate
 from plate_layout.plate_layout import Well
 from plate_layout.plate_layout import Study
-from plate_layout.plate_layout import QCplate
+from plate_layout.plate_layout import QCPlate
 
 config_folder = os.path.abspath(os.path.join(os.getcwd(), "config/"))
 config_file = "plate_config.toml"
@@ -214,22 +213,29 @@ def test_should_get_well_coordinates():
     assert well_crd[11] == (7,11)
     assert well_crd[84] == (0,0)
     assert well_crd[95] == (0,11)
- 
     
+def test_should_get_well_metadata():
+    assert 1 == 2, "Not implemented"
+    
+    
+def test_should_show_nan_in_get_for_missing_well_keys():
+    assert 1 == 2, "Not implemented"
+ 
+
+
 
 # QCplate SUBCLASS
 def test_should_raise_error_on_missing_config_file():
-    
         
     with pytest.raises(FileExistsError) as exception_info:
         print(exception_info)
-        qcplate = QCplate("my_config", (8,12), plate_id=3)
+        qcplate = QCPlate("my_config", (8,12), plate_id=3)
     
     assert exception_info.value.args[0] == "my_config"
 
     
 def test_should_create_QCplate():
-    qcplate = QCplate(config_path, (8,12), plate_id = 3)
+    qcplate = QCPlate(config_path, (8,12), plate_id = 3)
     
     assert qcplate.config["QC"]["run_QC_after_n_specimens"] == 11
     assert qcplate.plate_id == 3
@@ -238,13 +244,13 @@ def test_should_create_QCplate():
 
 
 def test_should_get_well_QC_info_from_well_name():
-    qcplate = QCplate(config_path, (8,12), plate_id = 3)
+    qcplate = QCPlate(config_path, (8,12), plate_id = 3)
 
     assert qcplate["A_1"].metadata["QC"] == True
     
     
 def test_should_get_well_QC_info_from_well_coord():
-    qcplate = QCplate(config_path, (8,12), plate_id = 3)
+    qcplate = QCPlate(config_path, (8,12), plate_id = 3)
 
     assert qcplate[(0,7)].metadata["QC"] == True
 
@@ -290,7 +296,7 @@ def test_should_create_batches():
     my_study = Study(study_name)
     my_study.load_specimen_records(records_path_xlsx)
     
-    my_study.create_batches(QCplate(config_path, (8,12)))
+    my_study.create_batches(QCPlate(config_path, (8,12)))
     
     assert len(my_study.batches) == 14
     
