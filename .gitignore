@@ -1,4 +1,7 @@
 data/batch*
+tests/__pycache__
+.pytest_cache
+.vscode/
 
 # Packages #
 ############
@@ -18,3 +21,6 @@ data/batch*
 *.log
 *.sql
 *.sqlite
+
+# 
+*.pyc
