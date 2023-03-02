@@ -469,7 +469,9 @@ class Plate:
         ax.set_title(title_str)
         #return fig
         
-    def to_file(self, file_path : str = None, file_format : str = "tsv", metadata : list = None) -> None:
+    def to_file(self, file_path : str = None,
+                file_format : str = "txt",
+                metadata_keys : list = []) -> None:
         
         if file_path is None:
             file_name = f"Plate_{self.plate_id}.{file_format}"
@@ -479,25 +481,70 @@ class Plate:
         if os.path.isdir(file_path):
             file_name = f"Plate_{self.plate_id}.{file_format}"
             file_path = os.path.join(file_path, file_name)
-            
-        dialect = 'unix'
-        delimiter = ","
-        if file_format == "tsv":
-            delimiter = "\t"
-        elif file_format == "xlsx" or "xls":
-            dialect = "excel"
         else: 
-            raise RuntimeWarning(file_format)
+            file_extension = os.path.splitext(file_path)[1]
             
-        
-        file, ext = os.path.splitext(file_path)
-        
+            if not file_extension:
+                file_path += f".{file_format}"
+            else: # deduce file format to use from file extenstion
+                file_format = file_extension[1::] # don't include . in name
+    
         logger.info(f"Writing to file:\n\t{file_path}")
         
-        with open(file_path, "w", newline="") as file:
-            writer = csv.writer(file, delimiter=delimiter, lineterminator="\n", dialect=dialect)
-            for well in self:
-                writer.writerow([well.name, well.metadata["sample_name"]])
+        if file_format != "txt":
+            
+            dialect = 'unix'
+            delimiter = ","
+            if file_format == "tsv":
+                delimiter = "\t"
+            elif file_format == "xlsx" or "xls":
+                dialect = "excel"
+            else: 
+                raise RuntimeWarning(file_format)
+            
+            
+            with open(file_path, "w", newline="") as file:
+                writer = csv.writer(file, 
+                                    delimiter=delimiter,
+                                    lineterminator="\n",
+                                    dialect=dialect,
+                                    quoting=csv.QUOTE_NONE,)
+                
+                # Create and write column headers
+                to_write = ["well", "sample_name"]
+                for key in metadata_keys:
+                    to_write.append(key)
+                writer.writerow(to_write)
+                
+                # Write rows
+                for well in self:
+                    well_name = str().join(well.name.split("_"))
+                    to_write = [well_name, well.metadata["sample_name"]]
+                    
+                    for key in metadata_keys:
+                        to_write.append(well.metadata[key])
+                        
+                    writer.writerow(to_write)
+        else: # default: write to text file
+            width = 20
+            width2 = 10
+            with open(file_path, "w", newline="\n") as file: 
+                
+                # Create and write column headers
+                to_write = f"{'well':<{width2}}{'sample name':<{width}}"
+                for key in metadata_keys:
+                    to_write += f"{key:<{width}}"
+                file.write(to_write+"\n")
+                
+                # Write rows
+                for well in self:
+                    well_name = str().join(well.name.split("_"))
+                    to_write = f"{well_name:<{width2}}{well.metadata['sample_name']:<{width}}"
+                    
+                    for key in metadata_keys:
+                        to_write += f"{str(well.metadata[key]):<{width}}"
+                
+                    file.write(to_write+"\n")
         
         
         
@@ -749,6 +796,9 @@ class Study:
             raise StopIteration
         
         return plate_to_return
+    
+    def __len__(self):
+        return len(self.batches)
         
     
     def __repr__(self):
