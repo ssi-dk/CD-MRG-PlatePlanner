@@ -334,13 +334,13 @@ def test_should_write_plate_layout_to_txt_file(my_study):
     
     assert os.path.exists(file_path) == True
     
+    
 def test_should_write_plate_layout_to_format_from_file_extension(my_study):
     plate = my_study[0] 
     plate.to_file("Plate_1.csv")
     file_path = "Plate_1.csv"
     
     assert os.path.exists(file_path) == True
-    
     
 
 def test_should_write_plate_layout_to_file_given_metadata(my_study): 

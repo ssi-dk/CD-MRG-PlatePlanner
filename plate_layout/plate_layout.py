@@ -354,12 +354,13 @@ class Plate:
         
         # assign well color for each well according to color scheme defined above
         for well in self:
-            key = well.metadata[metadata_key]
+            key = well.metadata.get(metadata_key, "NaN")
             well.metadata["color"] = RGB_colors[key]
             
         return RGB_colors
 
-    def plot(self, annotation_metadata_key = None, 
+
+    def to_figure(self, annotation_metadata_key = None, 
              color_metadata_key = None,
              fontsize: int = 8,
             rotation: int = 0,
@@ -418,7 +419,7 @@ class Plate:
             x_i = Xgrid[well.coordinate]
             y_i = Ygrid[well.coordinate]
         
-            annotation_label = well.metadata[annotation_metadata_key]
+            annotation_label = well.metadata.get(annotation_metadata_key, "NaN")
         
             ax.annotate(annotation_label, (x_i, y_i), 
                         horizontalalignment='center', 
@@ -450,7 +451,6 @@ class Plate:
             )
             
         # FIG PROPERTIES
-
         # X axis
         ax.set_xticks(x)
         ax.set_xticklabels(self.columns)
@@ -467,7 +467,9 @@ class Plate:
         ax.set_axisbelow(True)
         
         ax.set_title(title_str)
-        #return fig
+        
+        return fig
+    
         
     def to_file(self, file_path : str = None,
                 file_format : str = "txt",
@@ -522,7 +524,7 @@ class Plate:
                     to_write = [well_name, well.metadata["sample_name"]]
                     
                     for key in metadata_keys:
-                        to_write.append(well.metadata[key])
+                        to_write.append(well.metadata.get(key), "NaN")
                         
                     writer.writerow(to_write)
         else: # default: write to text file
@@ -542,7 +544,7 @@ class Plate:
                     to_write = f"{well_name:<{width2}}{well.metadata['sample_name']:<{width}}"
                     
                     for key in metadata_keys:
-                        to_write += f"{str(well.metadata[key]):<{width}}"
+                        to_write += f"{str(well.metadata.get(key,'NaN')):<{width}}"
                 
                     file.write(to_write+"\n")
         
@@ -721,31 +723,7 @@ class QCPlate(Plate):
             self.wells[index].metadata["sample_code"] = self._specimen_code
             self.wells[index].metadata["sample_type"] = self._specimen_base_name
             self.wells[index].metadata["sample_name"] = f"{self._specimen_code}{i+1}"                
-        
 
-class Nisse:
-
-    def plot_layout(self, **kwargs):
-        
-        well_labels = self.sample_order   
-        well_color_data = [val.split('_')[0] for val in well_labels ]
-        
-        self.plateplot(well_labels, well_color_data, **kwargs)
-        
-        
-    def plot_batch(self, batch_index, 
-                   well_label_column, well_color_column, 
-                   label_dtype=None,
-                   **kwargs):
-        
-        title_str = f"Batch {batch_index + 1}: {well_label_column} colored by {well_color_column}" 
-    
-        self.plateplot(self.batches_df[batch_index][well_label_column].astype(label_dtype),
-                       self.batches_df[batch_index][well_color_column],
-                       title_str = title_str,
-                       **kwargs)
-        
-        
 
 class Study:
     """_summary_
@@ -886,7 +864,6 @@ class Study:
         
         if folder_path is None: 
             folder_path = os.getcwd()
-            
         
         for plate in self:
             file_name = f"{base_name}_{plate.plate_id}"
@@ -897,9 +874,23 @@ class Study:
                           metadata_keys=metadata_keys)
     
     
-    def to_layout_figures(self, metadata: list = None) -> None:
-        pass
+    def to_layout_figures(self,
+                          annotation_metadata_key : str,
+                          color_metadata_key : str,
+                        file_format : str = "pdf",
+                        folder_path : str = None,
+                        base_name : str = "Plate", **kwargs) -> None:
+        
+        if folder_path is None: 
+            folder_path = os.getcwd()
+            
+        for plate in self:
+            file_name = f"{base_name}_{plate.plate_id}.{file_format}"
+            file_path = os.path.join(folder_path, file_name)
+            
+            fig = plate.to_figure(annotation_metadata_key, color_metadata_key, **kwargs)
     
+            plt.savefig(file_path)
     
     def create_batches(self, plate_layout : object) -> None: 
             
@@ -909,7 +900,6 @@ class Study:
         # get specimen data from study list
         
         specimen_df_copy = self.specimen_records_df.copy()
-        
         
         while specimen_df_copy.shape[0] > 0:
 
@@ -939,46 +929,6 @@ class Study:
 
         logger.info(f"Finished distributing samples to plates; {self.N_batches} batches created.")
         
-
-
-    def batch_to_file(self, 
-                fileformat: str = "csv",
-                batch_index: list = None,
-                folder_path: str = None,
-                write_columns: list = None):
-        
-        if batch_index is None:
-            batch_index = range(0, len(self.batches_df))
-            
-        if folder_path is None:
-            folder_path = os.getcwd()
-        
-        for id in batch_index:
-            filename = f"batch_{id+1}."
-            filepath = os.path.join(folder_path, filename)
-            
-            batch = self.batches_df[id]
-            
-            if write_columns is not None:
-                dropcolumns = [col for col in batch.columns if col not in write_columns]
-                batch = batch.drop(columns=dropcolumns)
-                logger.debug("Dropping columns from dataframe:")
-                for col in dropcolumns:
-                    logger.debug(f"\t{col}")
-            
-            if fileformat == "tsv" or ("tab" in fileformat): 
-                fext = "tsv"
-                batch.to_csv(filepath+fext, sep="\t")
-                
-            elif fileformat == "csv" or ("comma" in fileformat):
-                fext = "csv"
-                batch.to_csv(filepath+fext)
-                
-            else:
-                fext = "xlxs"
-                batch.to_excel(filepath+fext)
-                
-            logger.info(f"Saving batch {id} to {filepath+fext} ")    
 
 
 
