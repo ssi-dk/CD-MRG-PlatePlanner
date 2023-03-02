@@ -879,8 +879,22 @@ class Study:
         # --- END OF FOOR LOOP ---
     
     
-    def to_layout_lists(self, metadata: list = None) -> None:
-        pass
+    def to_layout_lists(self, metadata_keys: list = None, 
+                        file_format : str = "txt",
+                        folder_path : str = None,
+                        base_name : str = "Plate") -> None:
+        
+        if folder_path is None: 
+            folder_path = os.getcwd()
+            
+        
+        for plate in self:
+            file_name = f"{base_name}_{plate.plate_id}"
+            file_path = os.path.join(folder_path, file_name)
+            
+            plate.to_file(file_path=file_path,
+                          file_format=file_format,
+                          metadata_keys=metadata_keys)
     
     
     def to_layout_figures(self, metadata: list = None) -> None:
