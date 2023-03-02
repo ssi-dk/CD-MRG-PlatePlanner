@@ -1,13 +1,15 @@
 import numpy as np
 import pandas as pd
-import itertools, os, tomli, glob, copy, datetime
-import setuptools
+
+import itertools, os, tomli, glob, copy, datetime, csv, string
+
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-import string
+# custom class for logging
 from .logger import logger
 
+# parameters governing how numpy arrays are printed to console
 np.set_printoptions(threshold=np.inf)
 np.set_printoptions(linewidth=np.inf)
 
@@ -126,7 +128,7 @@ class Plate:
                                     range(len(rows)-1, -1, -1),
                                     range(0, len(columns))
                                     )
-                                    )
+                    )
         
     @staticmethod
     def create_alphanumerical_coordinates(rows, columns) -> list:
@@ -466,6 +468,37 @@ class Plate:
         
         ax.set_title(title_str)
         #return fig
+        
+    def to_file(self, file_path : str = None, file_format : str = "tsv", metadata : list = None) -> None:
+        
+        if file_path is None:
+            file_name = f"Plate_{self.plate_id}.{file_format}"
+            file_path = os.path.join(os.getcwd(), file_name)
+            
+        # file_path is a directory
+        if os.path.isdir(file_path):
+            file_name = f"Plate_{self.plate_id}.{file_format}"
+            file_path = os.path.join(file_path, file_name)
+            
+        dialect = 'unix'
+        delimiter = ","
+        if file_format == "tsv":
+            delimiter = "\t"
+        elif file_format == "xlsx" or "xls":
+            dialect = "excel"
+        else: 
+            raise RuntimeWarning(file_format)
+            
+        
+        file, ext = os.path.splitext(file_path)
+        
+        logger.info(f"Writing to file:\n\t{file_path}")
+        
+        with open(file_path, "w", newline="") as file:
+            writer = csv.writer(file, delimiter=delimiter, lineterminator="\n", dialect=dialect)
+            for well in self:
+                writer.writerow([well.name, well.metadata["sample_name"]])
+        
         
         
 # A plate with QC samples is a subclass of a Plate class
