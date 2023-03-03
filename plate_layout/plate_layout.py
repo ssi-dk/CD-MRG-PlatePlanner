@@ -934,16 +934,29 @@ class Study:
             return
         
         if group_column_name is None:
+            
+            # Select columns that are integers; currently we can only identify groups based on pair _numbers_ 
             int_cols = self.specimen_records_df.select_dtypes("int")
+            
             
             logger.debug(f"Looking for group index of study pairs in the following table columns:")
             for col_name in int_cols.columns:
+                
                 logger.debug(f"\t{col_name}")
-            
-            # Sorry if you have to understand these messy lines
-            columns_have_pairs = int_cols.apply(np.diff, axis=0).apply(lambda x: x==0).sum() == (int_cols.shape[0]//2)
-            group_column_name = columns_have_pairs[ columns_have_pairs == True].index.to_list()[0]
-            
+                
+                # sort in ascending order
+                int_col = int_cols[col_name].sort_values()
+                # compute difference: n_1 - n_2, n_2 - n_3, ...
+                int_diffs = np.diff(int_col)
+                # count instances were numbers were the same
+                n_zeros = np.sum(list(map(lambda x: x==0, int_diffs)))
+                # we assume column contains pairs if #pairs == #samples / 2
+                column_have_pairs = n_zeros == (int_col.shape[0]//2)
+
+                if column_have_pairs:# we found a column so let's assume it is the correct one
+                    group_column_name = col_name
+                    break 
+                
             if not group_column_name:
                 logger.error(f"Could not find a column variable to use as index for case-control pairs")
                 return
