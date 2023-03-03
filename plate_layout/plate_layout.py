@@ -324,7 +324,7 @@ class Plate:
         return self.to_numpy_array(metadata)
     
     
-    def define_metadata_colors(self, metadata_key : str) -> dict:
+    def define_metadata_colors(self, metadata_key : str, colormap : str) -> dict:
         # get number of colors needed == number of (discrete) values represented in wells with metadata_key
         metadata_categories = np.unique(self.get(metadata_key))  
         
@@ -332,14 +332,14 @@ class Plate:
         
         RGB_colors = {}
         for i,s in enumerate(metadata_categories): 
-            col = mpl.colormaps[self._colormap](i)[0:3] #get RGB values for i-th color in colormap
+            col = mpl.colormaps[colormap](i)[0:3] #get RGB values for i-th color in colormap
             if s != "NaN":
                 RGB_colors.setdefault(s, col) 
             else: 
                 RGB_colors.setdefault("NaN", self._NaN_color)
         
         logger.debug(f"Metadata {metadata_key} has {N_colors} values: {metadata_categories}.")
-        logger.debug(f"Assigning {N_colors} colors from colormap {self._colormap} to metadata {metadata_key} as:")
+        logger.debug(f"Assigning {N_colors} colors from colormap {colormap} to metadata {metadata_key} as:")
         
         key_length = np.max(list(map(len,metadata_categories)))
         
@@ -349,8 +349,9 @@ class Plate:
         return RGB_colors
     
     
-    def assign_well_color(self, metadata_key : str) -> dict:
-        RGB_colors = self.define_metadata_colors(metadata_key)
+    def assign_well_color(self, metadata_key : str, colormap : str) -> dict:
+        
+        RGB_colors = self.define_metadata_colors(metadata_key, colormap)
         
         # assign well color for each well according to color scheme defined above
         for well in self:
@@ -375,15 +376,19 @@ class Plate:
             grid_color = (1,1,1),
             edge_color = (0.5, 0.5, 0.5),
             legend_bb = (0.15, -0.2, 0.7, 1.3),
-            legend_n_columns = 6
+            legend_n_columns = 6,
+            colormap = None,
             ) -> object:
+        
+        if colormap is None:
+            colormap = self._colormap
         
         # Define title 
         if title_str is None:
             title_str = f"Plate {self.plate_id}, showing {annotation_metadata_key} colored by {color_metadata_key}"
              
         # DEFINE COLORS FOR METADATA VALUES  
-        RGB_colors = self.assign_well_color(color_metadata_key)
+        RGB_colors = self.assign_well_color(color_metadata_key, colormap)
         
         # DEFINE GRID FOR WELLS
         # 1 - define the lower and upper limits 
@@ -810,8 +815,7 @@ class Study:
         else:
             logger.error(f"File extension not recognized")
             records = pd.DataFrame()
-            
-        
+               
         self._column_with_group_index = Study.find_column_with_group_index(records)
         
         if self._column_with_group_index:
@@ -847,7 +851,7 @@ class Study:
             study_plate[i] = well
             
             if plate_specimen_count >= N_specimens_left:
-                    logger.debug(f"Finished. Last specimen placed in {well.name}")
+                    logger.debug(f"\t -> Done. Last specimen placed in {well.name}")
                     break
                 
         return study_plate
@@ -987,17 +991,15 @@ class Study:
 
         permutation_order = np.random.permutation(group_IDs)
         
-        #logger.debug(f"new order for groups (old, new):\n{list(zip(group_IDs,self._permutation_order))}")
         prev_index_str = "index_before_permutation"
         
+        # if multiple randomization runds, remove old column = prev_index_str 
         if prev_index_str in specimen_records_df_copy.columns:
             specimen_records_df_copy = specimen_records_df_copy.drop(columns=prev_index_str)
         
         specimen_records_df_copy = specimen_records_df_copy.loc[permutation_order].reset_index(level=column_with_group_index).reset_index()
         specimen_records_df_copy = specimen_records_df_copy.rename(columns = {"index": "index_before_permutation"})
-       
-        #.reset_index().rename(columns={specimen_records_df_copy.index.name: group_column_name})
-        
+
         self._N_permutations += 1
         self.specimen_records_df = specimen_records_df_copy.copy()
 
