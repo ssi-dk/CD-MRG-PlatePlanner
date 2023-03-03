@@ -809,10 +809,10 @@ class Study:
         
         if extension == ".xlsx":
             logger.debug(f"Importing Excel file.")
-            records = pd.read_excel(records_file, index_col=0)
+            records = pd.read_excel(records_file, )
         elif extension == ".csv":
             logger.debug(f"Importing csv file.")
-            records = pd.read_csv(records_file, index_col=0)
+            records = pd.read_csv(records_file, )
         else:
             logger.error(f"File extension not recognized")
             records = pd.DataFrame()
@@ -926,13 +926,29 @@ class Study:
         logger.info(f"Finished distributing samples to plates; {self.N_batches} batches created.")
         
         
-    def randomize_group_order(self, group_column_name, reproducible : bool = True) -> None:
+    def randomize_group_order(self, group_column_name: str = None, reproducible : bool = True) -> None:
         # Note: I chose not to modify DFs "by reference", i.e  set inplace=True, as the DS community 
         # seem to want explicit ("by value") modifications using = operator.
-        
         if not len(self.specimen_records_df) > 0:
             logger.error("There are no study records loaded. Use 'load_specimen_records' method to import study records.")
+            return
+        
+        if group_column_name is None:
+            int_cols = self.specimen_records_df.select_dtypes("int")
             
+            logger.debug(f"Looking for group index of study pairs in the following table columns:")
+            for col_name in int_cols.columns:
+                logger.debug(f"\t{col_name}")
+            
+            # Sorry if you have to understand these messy lines
+            columns_have_pairs = int_cols.apply(np.diff, axis=0).apply(lambda x: x==0).sum() == (int_cols.shape[0]//2)
+            group_column_name = columns_have_pairs[ columns_have_pairs == True].index.to_list()[0]
+            
+            if not group_column_name:
+                logger.error(f"Could not find a column variable to use as index for case-control pairs")
+                return
+        
+        
         logger.info(f"Randomly permuting group order (samples within group unchanged) using variable '{group_column_name}'")
         specimen_records_df_copy = self.specimen_records_df.copy()
         
