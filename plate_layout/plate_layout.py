@@ -746,7 +746,7 @@ class Study:
     _batch_count : int
     _iter_count : int
     _seed = 1234 # seed number for the random number generator in case randomization of specimens should be reproducible
-    
+    _N_permutations : int
     
     def __init__(self, 
                  study_name=None, 
@@ -759,6 +759,8 @@ class Study:
         self.study_specimens = 0
         self.N_batches = 0
         self.batches = []
+        
+        self._N_permutations = 0
         
         
     def __iter__(self) -> None:
@@ -796,7 +798,7 @@ class Study:
     
     def load_specimen_records(self, records_file : str):
         
-        self.records_file = records_file
+        self.records_file_path = records_file
         
         logger.debug(f"Loading records file: {records_file}")
         extension = os.path.splitext(records_file)[1]
@@ -807,7 +809,7 @@ class Study:
         
         if extension == ".xlsx":
             logger.debug(f"Importing Excel file.")
-            records = pd.read_excel(records_file)
+            records = pd.read_excel(records_file, index_col=0)
         elif extension == ".csv":
             logger.debug(f"Importing csv file.")
             records = pd.read_csv(records_file, index_col=0)
@@ -817,12 +819,6 @@ class Study:
             
         self.specimen_records_df = records
           
-          
-    def randomize_specimen_order(self, 
-                                 case_control_group_column_name: str = None,
-                                 reproducable : bool = True) -> None:
-        return NotImplemented
-    
     
     def add_specimens_to_plate(self, study_plate: object, specimen_samples_df: object) -> object:
         
@@ -929,6 +925,50 @@ class Study:
 
         logger.info(f"Finished distributing samples to plates; {self.N_batches} batches created.")
         
+        
+    def randomize_group_order(self, group_column_name, reproducible : bool = True) -> None:
+        # Note: I chose not to modify DFs "by reference", i.e  set inplace=True, as the DS community 
+        # seem to want explicit ("by value") modifications using = operator.
+        
+        if not len(self.specimen_records_df) > 0:
+            logger.error("There are no study records loaded. Use 'load_specimen_records' method to import study records.")
+            
+        logger.info(f"Randomly permuting group order (samples within group unchanged) using variable '{group_column_name}'")
+        specimen_records_df_copy = self.specimen_records_df.copy()
+        
+        if group_column_name in self.specimen_records_df.columns: 
+            specimen_records_df_copy = specimen_records_df_copy.set_index([group_column_name, specimen_records_df_copy.index])
+            logger.debug("Creating multiindex dataframe")
+            
+        else:       
+            logger.error(f"There is no column with name '{group_column_name}' in your study table \
+                '{os.path.split(self.records_file_path)[1]}' ")
+            return 
+             
+        group_IDs = np.unique(specimen_records_df_copy.index.get_level_values(0))
+
+        # Permute order in table
+        if reproducible:
+            logger.info(f"Using a fixed seed to random number generator for reproducibility; \
+                running this method will always give the same result.")
+            logger.debug(f"Using class-determined seed {self._seed} for random number generator")
+            np.random.seed(self._seed)
+
+        permutation_order = np.random.permutation(group_IDs)
+        
+        #logger.debug(f"new order for groups (old, new):\n{list(zip(group_IDs,self._permutation_order))}")
+        prev_index_str = "index_before_permutation"
+        
+        if prev_index_str in specimen_records_df_copy.columns:
+            specimen_records_df_copy = specimen_records_df_copy.drop(columns=prev_index_str)
+        
+        specimen_records_df_copy = specimen_records_df_copy.loc[permutation_order].reset_index(level=group_column_name).reset_index()
+        specimen_records_df_copy = specimen_records_df_copy.rename(columns = {"index": "index_before_permutation"})
+       
+        #.reset_index().rename(columns={specimen_records_df_copy.index.name: group_column_name})
+        
+        self._N_permutations += 1
+        self.specimen_records_df = specimen_records_df_copy.copy()
 
 
 
