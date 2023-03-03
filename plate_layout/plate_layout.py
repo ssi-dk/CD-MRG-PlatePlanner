@@ -333,8 +333,8 @@ class Plate:
         RGB_colors = {}
         for i,s in enumerate(metadata_categories): 
             col = mpl.colormaps[colormap](i)[0:3] #get RGB values for i-th color in colormap
-            if s != "NaN":
-                RGB_colors.setdefault(s, col) 
+            if (s != "NaN") and (pd.notnull(s)):
+                RGB_colors.setdefault(str(s), col) 
             else: 
                 RGB_colors.setdefault("NaN", self._NaN_color)
         
@@ -356,7 +356,9 @@ class Plate:
         # assign well color for each well according to color scheme defined above
         for well in self:
             key = well.metadata.get(metadata_key, "NaN")
-            well.metadata["color"] = RGB_colors[key]
+            if pd.isnull(key):
+                key = "NaN"
+            well.metadata["color"] = RGB_colors[str(key)]
             
         return RGB_colors
 
@@ -887,10 +889,13 @@ class Study:
             folder_path = os.getcwd()
             
         for plate in self:
-            file_name = f"{base_name}_{plate.plate_id}.{file_format}"
+            file_name = f"{self.name}_{base_name}_{plate.plate_id}_{annotation_metadata_key}_{color_metadata_key}.{file_format}"
             file_path = os.path.join(folder_path, file_name)
             
-            fig = plate.to_figure(annotation_metadata_key, color_metadata_key, **kwargs)
+            # Define title        
+            title_str = f"{self.name}: Plate {plate.plate_id}, showing {annotation_metadata_key} colored by {color_metadata_key}"
+           
+            fig = plate.to_figure(annotation_metadata_key, color_metadata_key, title_str=title_str, **kwargs)
     
             plt.savefig(file_path)
     
