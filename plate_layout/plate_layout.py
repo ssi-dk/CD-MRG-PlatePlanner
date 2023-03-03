@@ -739,14 +739,15 @@ class Study:
     name = str
     plate_layout = object
     QC_config_file = str
-    batches = list
+    batches : list = []
     
-    specimen_records : object
+    specimen_records_df : object = pd.DataFrame()
     
-    _batch_count : int
-    _iter_count : int
+    _batch_count : int = 0
+    _iter_count : int = 0
     _seed = 1234 # seed number for the random number generator in case randomization of specimens should be reproducible
-    _N_permutations : int
+    _N_permutations : int = 0
+    _column_with_group_index : str = ""
     
     def __init__(self, 
                  study_name=None, 
@@ -756,11 +757,6 @@ class Study:
             study_name = f"Study_{datetime.date}"
             
         self.name = study_name
-        self.study_specimens = 0
-        self.N_batches = 0
-        self.batches = []
-        
-        self._N_permutations = 0
         
         
     def __iter__(self) -> None:
@@ -777,6 +773,7 @@ class Study:
         
         return plate_to_return
     
+    
     def __len__(self):
         return len(self.batches)
         
@@ -792,9 +789,6 @@ class Study:
     def __getitem__(self, index):
         return self.batches[index]
     
-    
-    # def __contains__():
-    #     pass
     
     def load_specimen_records(self, records_file : str):
         
@@ -817,11 +811,19 @@ class Study:
             logger.error(f"File extension not recognized")
             records = pd.DataFrame()
             
+        
+        self._column_with_group_index = Study.find_column_with_group_index(records)
+        
+        if self._column_with_group_index:
+            logger.debug(f"Sorting records in ascending order based on column '{self._column_with_group_index}'")
+            records = records.sort_values(by=[self._column_with_group_index])
+            
         self.specimen_records_df = records
-          
+             
     
     def add_specimens_to_plate(self, study_plate: object, specimen_samples_df: object) -> object:
         
+        logger.debug(f"Adding samples to plate {study_plate.plate_id}")
         columns = specimen_samples_df.columns
         
         # keep track on how many wells we should use per batch
@@ -845,7 +847,7 @@ class Study:
             study_plate[i] = well
             
             if plate_specimen_count >= N_specimens_left:
-                    logger.debug(f"Finished distributing specimen samples to plate wells. Last specimen is {well}")
+                    logger.debug(f"Finished. Last specimen placed in {well.name}")
                     break
                 
         return study_plate
@@ -888,13 +890,13 @@ class Study:
     
             plt.savefig(file_path)
     
+    
     def create_batches(self, plate_layout : object) -> None: 
             
         batch_count = 1
         batches = []
         
         # get specimen data from study list
-        
         specimen_df_copy = self.specimen_records_df.copy()
         
         while specimen_df_copy.shape[0] > 0:
@@ -911,7 +913,6 @@ class Study:
             specimen_df_copy.reset_index(inplace=True, drop=True)
 
             # add specimen to plate
-            logger.debug(f"Populating plate {batch_count}")
             study_plate = self.add_specimens_to_plate(study_plate, sel)
             
             batches.append(study_plate)
@@ -924,56 +925,57 @@ class Study:
         self.N_batches = batch_count - 1
 
         logger.info(f"Finished distributing samples to plates; {self.N_batches} batches created.")
+       
         
+    @staticmethod
+    def find_column_with_group_index(specimen_records_df) -> str:
+        # Select columns that are integers; currently we can only identify groups based on pair _numbers_ 
+        int_cols = specimen_records_df.select_dtypes("int")
+                    
+        logger.debug(f"Looking for group index of study pairs in the following table columns:")
         
-    def randomize_group_order(self, group_column_name: str = None, reproducible : bool = True) -> None:
+        for col_name in int_cols.columns:
+            
+            logger.debug(f"\t\t{col_name}")
+            
+            # sort in ascending order
+            int_col = int_cols[col_name].sort_values()
+            # compute difference: n_1 - n_2, n_2 - n_3, ...
+            int_diffs = np.diff(int_col)
+            # count instances were numbers were the same, i.e. diff == 0
+            n_zeros = np.sum(list(map(lambda x: x==0, int_diffs)))
+            # we assume column contains pairs if #pairs == #samples / 2
+            column_have_pairs = n_zeros == (int_col.shape[0]//2)
+
+            if column_have_pairs:# we found a column so let's assume it is the correct one
+                return col_name
+            
+        logger.warning(f"Could not find a column variable to use as index for case-control pairs")
+        return "" 
+        
+    
+    def randomize_group_order(self, column_with_group_index: str = None, reproducible : bool = True) -> None:
         # Note: I chose not to modify DFs "by reference", i.e  set inplace=True, as the DS community 
         # seem to want explicit ("by value") modifications using = operator.
         if not len(self.specimen_records_df) > 0:
             logger.error("There are no study records loaded. Use 'load_specimen_records' method to import study records.")
             return
         
-        if group_column_name is None:
-            
-            # Select columns that are integers; currently we can only identify groups based on pair _numbers_ 
-            int_cols = self.specimen_records_df.select_dtypes("int")
-            
-            
-            logger.debug(f"Looking for group index of study pairs in the following table columns:")
-            for col_name in int_cols.columns:
-                
-                logger.debug(f"\t{col_name}")
-                
-                # sort in ascending order
-                int_col = int_cols[col_name].sort_values()
-                # compute difference: n_1 - n_2, n_2 - n_3, ...
-                int_diffs = np.diff(int_col)
-                # count instances were numbers were the same
-                n_zeros = np.sum(list(map(lambda x: x==0, int_diffs)))
-                # we assume column contains pairs if #pairs == #samples / 2
-                column_have_pairs = n_zeros == (int_col.shape[0]//2)
-
-                if column_have_pairs:# we found a column so let's assume it is the correct one
-                    group_column_name = col_name
-                    break 
-                
-            if not group_column_name:
-                logger.error(f"Could not find a column variable to use as index for case-control pairs")
-                return
+        if column_with_group_index is None:
+            column_with_group_index = self._column_with_group_index
         
-        
-        logger.info(f"Randomly permuting group order (samples within group unchanged) using variable '{group_column_name}'")
+        logger.info(f"Randomly permuting group order (samples within group unchanged) using variable '{column_with_group_index}'")
         specimen_records_df_copy = self.specimen_records_df.copy()
         
-        if group_column_name in self.specimen_records_df.columns: 
-            specimen_records_df_copy = specimen_records_df_copy.set_index([group_column_name, specimen_records_df_copy.index])
+        if column_with_group_index in self.specimen_records_df.columns: 
+            specimen_records_df_copy = specimen_records_df_copy.set_index([column_with_group_index, specimen_records_df_copy.index])
             logger.debug("Creating multiindex dataframe")
             
         else:       
-            logger.error(f"There is no column with name '{group_column_name}' in your study table \
+            logger.error(f"There is no column with name '{column_with_group_index}' in your study table \
                 '{os.path.split(self.records_file_path)[1]}' ")
             return 
-             
+         
         group_IDs = np.unique(specimen_records_df_copy.index.get_level_values(0))
 
         # Permute order in table
@@ -991,7 +993,7 @@ class Study:
         if prev_index_str in specimen_records_df_copy.columns:
             specimen_records_df_copy = specimen_records_df_copy.drop(columns=prev_index_str)
         
-        specimen_records_df_copy = specimen_records_df_copy.loc[permutation_order].reset_index(level=group_column_name).reset_index()
+        specimen_records_df_copy = specimen_records_df_copy.loc[permutation_order].reset_index(level=column_with_group_index).reset_index()
         specimen_records_df_copy = specimen_records_df_copy.rename(columns = {"index": "index_before_permutation"})
        
         #.reset_index().rename(columns={specimen_records_df_copy.index.name: group_column_name})
