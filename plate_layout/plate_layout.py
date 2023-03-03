@@ -1,13 +1,15 @@
 import numpy as np
 import pandas as pd
-import itertools, os, tomli, glob, copy, datetime
-import setuptools
+
+import itertools, os, tomli, glob, copy, datetime, csv, string
+
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-import string
+# custom class for logging
 from .logger import logger
 
+# parameters governing how numpy arrays are printed to console
 np.set_printoptions(threshold=np.inf)
 np.set_printoptions(linewidth=np.inf)
 
@@ -126,7 +128,7 @@ class Plate:
                                     range(len(rows)-1, -1, -1),
                                     range(0, len(columns))
                                     )
-                                    )
+                    )
         
     @staticmethod
     def create_alphanumerical_coordinates(rows, columns) -> list:
@@ -352,19 +354,18 @@ class Plate:
         
         # assign well color for each well according to color scheme defined above
         for well in self:
-            key = well.metadata[metadata_key]
+            key = well.metadata.get(metadata_key, "NaN")
             well.metadata["color"] = RGB_colors[key]
             
         return RGB_colors
 
-    def plot(self, annotation_metadata_key = None, 
+
+    def to_figure(self, annotation_metadata_key = None, 
              color_metadata_key = None,
              fontsize: int = 8,
             rotation: int = 0,
-            colormap: str = "tab20",
-            NaN_color: tuple = (1,1,1),
             step = 10,
-            title_str = '',
+            title_str = None,
             alpha = 0.7,
             well_size = 1200,
             fig_width = 11.69,
@@ -373,7 +374,13 @@ class Plate:
             plt_style = "bmh",
             grid_color = (1,1,1),
             edge_color = (0.5, 0.5, 0.5),
+            legend_bb = (0.15, -0.2, 0.7, 1.3),
+            legend_n_columns = 6
             ) -> object:
+        
+        # Define title 
+        if title_str is None:
+            title_str = f"Plate {self.plate_id}, showing {annotation_metadata_key} colored by {color_metadata_key}"
              
         # DEFINE COLORS FOR METADATA VALUES  
         RGB_colors = self.assign_well_color(color_metadata_key)
@@ -412,7 +419,7 @@ class Plate:
             x_i = Xgrid[well.coordinate]
             y_i = Ygrid[well.coordinate]
         
-            annotation_label = well.metadata[annotation_metadata_key]
+            annotation_label = well.metadata.get(annotation_metadata_key, "NaN")
         
             ax.annotate(annotation_label, (x_i, y_i), 
                         horizontalalignment='center', 
@@ -432,27 +439,16 @@ class Plate:
         
                 # Add a legend
         # Adjust position depending on number of legend keys to show
-        pos = ax.get_position()
-        if len(RGB_colors) < 6:
-            ax.set_position([pos.x0, pos.y0*1.8, pos.width, pos.height*0.9])
-            ax.legend(
+        pos = ax.get_position()       
+        ax.set_position([pos.x0, pos.y0*2, pos.width, pos.height*0.8])
+        ax.legend(
                 handles = lh,
-                bbox_to_anchor=(0.15, -0.15, 0.7, 1.3),
-                loc='lower center', 
-                frameon = False,
-                labelspacing=4,
-                ncol=4
-                )
-        else:
-            ax.set_position([pos.x0, pos.y0*2, pos.width, pos.height*0.8])
-            ax.legend(
-                handles = lh,
-                bbox_to_anchor=(0.15, -0.25, 0.7, 1.3),
+                bbox_to_anchor=legend_bb,
                 loc='lower center', 
                 frameon = False,
                 labelspacing=1,
-                ncol=8
-                )
+                ncol=legend_n_columns
+            )
             
         # FIG PROPERTIES
         # X axis
@@ -470,7 +466,88 @@ class Plate:
         # Hide grid behind graph elements
         ax.set_axisbelow(True)
         
-        #return fig
+        ax.set_title(title_str)
+        
+        return fig
+    
+        
+    def to_file(self, file_path : str = None,
+                file_format : str = "txt",
+                metadata_keys : list = []) -> None:
+        
+        if file_path is None:
+            file_name = f"Plate_{self.plate_id}.{file_format}"
+            file_path = os.path.join(os.getcwd(), file_name)
+            
+        # file_path is a directory
+        if os.path.isdir(file_path):
+            file_name = f"Plate_{self.plate_id}.{file_format}"
+            file_path = os.path.join(file_path, file_name)
+        else: 
+            file_extension = os.path.splitext(file_path)[1]
+            
+            if not file_extension:
+                file_path += f".{file_format}"
+            else: # deduce file format to use from file extenstion
+                file_format = file_extension[1::] # don't include . in name
+    
+        logger.info(f"Writing to file:\n\t{file_path}")
+        
+        if file_format != "txt":
+            
+            dialect = 'unix'
+            delimiter = ","
+            if file_format == "tsv":
+                delimiter = "\t"
+            elif file_format == "xlsx" or "xls":
+                dialect = "excel"
+            else: 
+                raise RuntimeWarning(file_format)
+            
+            
+            with open(file_path, "w", newline="") as file:
+                writer = csv.writer(file, 
+                                    delimiter=delimiter,
+                                    lineterminator="\n",
+                                    dialect=dialect,
+                                    quoting=csv.QUOTE_NONE,)
+                
+                # Create and write column headers
+                to_write = ["well", "sample_name"]
+                for key in metadata_keys:
+                    to_write.append(key)
+                writer.writerow(to_write)
+                
+                # Write rows
+                for well in self:
+                    well_name = str().join(well.name.split("_"))
+                    to_write = [well_name, well.metadata["sample_name"]]
+                    
+                    for key in metadata_keys:
+                        to_write.append(well.metadata.get(key), "NaN")
+                        
+                    writer.writerow(to_write)
+        else: # default: write to text file
+            width = 20
+            width2 = 10
+            with open(file_path, "w", newline="\n") as file: 
+                
+                # Create and write column headers
+                to_write = f"{'well':<{width2}}{'sample name':<{width}}"
+                for key in metadata_keys:
+                    to_write += f"{key:<{width}}"
+                file.write(to_write+"\n")
+                
+                # Write rows
+                for well in self:
+                    well_name = str().join(well.name.split("_"))
+                    to_write = f"{well_name:<{width2}}{well.metadata['sample_name']:<{width}}"
+                    
+                    for key in metadata_keys:
+                        to_write += f"{str(well.metadata.get(key,'NaN')):<{width}}"
+                
+                    file.write(to_write+"\n")
+        
         
         
 # A plate with QC samples is a subclass of a Plate class
@@ -646,31 +723,7 @@ class QCPlate(Plate):
             self.wells[index].metadata["sample_code"] = self._specimen_code
             self.wells[index].metadata["sample_type"] = self._specimen_base_name
             self.wells[index].metadata["sample_name"] = f"{self._specimen_code}{i+1}"                
-        
 
-class Nisse:
-
-    def plot_layout(self, **kwargs):
-        
-        well_labels = self.sample_order   
-        well_color_data = [val.split('_')[0] for val in well_labels ]
-        
-        self.plateplot(well_labels, well_color_data, **kwargs)
-        
-        
-    def plot_batch(self, batch_index, 
-                   well_label_column, well_color_column, 
-                   label_dtype=None,
-                   **kwargs):
-        
-        title_str = f"Batch {batch_index + 1}: {well_label_column} colored by {well_color_column}" 
-    
-        self.plateplot(self.batches_df[batch_index][well_label_column].astype(label_dtype),
-                       self.batches_df[batch_index][well_color_column],
-                       title_str = title_str,
-                       **kwargs)
-        
-        
 
 class Study:
     """_summary_
@@ -693,7 +746,7 @@ class Study:
     _batch_count : int
     _iter_count : int
     _seed = 1234 # seed number for the random number generator in case randomization of specimens should be reproducible
-    
+    _N_permutations : int
     
     def __init__(self, 
                  study_name=None, 
@@ -706,6 +759,8 @@ class Study:
         self.study_specimens = 0
         self.N_batches = 0
         self.batches = []
+        
+        self._N_permutations = 0
         
         
     def __iter__(self) -> None:
@@ -721,6 +776,9 @@ class Study:
             raise StopIteration
         
         return plate_to_return
+    
+    def __len__(self):
+        return len(self.batches)
         
     
     def __repr__(self):
@@ -740,7 +798,7 @@ class Study:
     
     def load_specimen_records(self, records_file : str):
         
-        self.records_file = records_file
+        self.records_file_path = records_file
         
         logger.debug(f"Loading records file: {records_file}")
         extension = os.path.splitext(records_file)[1]
@@ -751,7 +809,7 @@ class Study:
         
         if extension == ".xlsx":
             logger.debug(f"Importing Excel file.")
-            records = pd.read_excel(records_file)
+            records = pd.read_excel(records_file, index_col=0)
         elif extension == ".csv":
             logger.debug(f"Importing csv file.")
             records = pd.read_csv(records_file, index_col=0)
@@ -761,12 +819,6 @@ class Study:
             
         self.specimen_records_df = records
           
-          
-    def randomize_specimen_order(self, 
-                                 case_control_group_column_name: str = None,
-                                 reproducable : bool = True) -> None:
-        return NotImplemented
-    
     
     def add_specimens_to_plate(self, study_plate: object, specimen_samples_df: object) -> object:
         
@@ -801,13 +853,40 @@ class Study:
         # --- END OF FOOR LOOP ---
     
     
-    def to_layout_lists(self, metadata: list = None) -> None:
-        pass
+    def to_layout_lists(self, metadata_keys: list = None, 
+                        file_format : str = "txt",
+                        folder_path : str = None,
+                        base_name : str = "Plate") -> None:
+        
+        if folder_path is None: 
+            folder_path = os.getcwd()
+        
+        for plate in self:
+            file_name = f"{base_name}_{plate.plate_id}"
+            file_path = os.path.join(folder_path, file_name)
+            
+            plate.to_file(file_path=file_path,
+                          file_format=file_format,
+                          metadata_keys=metadata_keys)
     
     
-    def to_layout_figures(self, metadata: list = None) -> None:
-        pass
+    def to_layout_figures(self,
+                          annotation_metadata_key : str,
+                          color_metadata_key : str,
+                        file_format : str = "pdf",
+                        folder_path : str = None,
+                        base_name : str = "Plate", **kwargs) -> None:
+        
+        if folder_path is None: 
+            folder_path = os.getcwd()
+            
+        for plate in self:
+            file_name = f"{base_name}_{plate.plate_id}.{file_format}"
+            file_path = os.path.join(folder_path, file_name)
+            
+            fig = plate.to_figure(annotation_metadata_key, color_metadata_key, **kwargs)
     
+            plt.savefig(file_path)
     
     def create_batches(self, plate_layout : object) -> None: 
             
@@ -817,7 +896,6 @@ class Study:
         # get specimen data from study list
         
         specimen_df_copy = self.specimen_records_df.copy()
-        
         
         while specimen_df_copy.shape[0] > 0:
 
@@ -847,46 +925,50 @@ class Study:
 
         logger.info(f"Finished distributing samples to plates; {self.N_batches} batches created.")
         
-
-
-    def batch_to_file(self, 
-                fileformat: str = "csv",
-                batch_index: list = None,
-                folder_path: str = None,
-                write_columns: list = None):
         
-        if batch_index is None:
-            batch_index = range(0, len(self.batches_df))
-            
-        if folder_path is None:
-            folder_path = os.getcwd()
+    def randomize_group_order(self, group_column_name, reproducible : bool = True) -> None:
+        # Note: I chose not to modify DFs "by reference", i.e  set inplace=True, as the DS community 
+        # seem to want explicit ("by value") modifications using = operator.
         
-        for id in batch_index:
-            filename = f"batch_{id+1}."
-            filepath = os.path.join(folder_path, filename)
+        if not len(self.specimen_records_df) > 0:
+            logger.error("There are no study records loaded. Use 'load_specimen_records' method to import study records.")
             
-            batch = self.batches_df[id]
+        logger.info(f"Randomly permuting group order (samples within group unchanged) using variable '{group_column_name}'")
+        specimen_records_df_copy = self.specimen_records_df.copy()
+        
+        if group_column_name in self.specimen_records_df.columns: 
+            specimen_records_df_copy = specimen_records_df_copy.set_index([group_column_name, specimen_records_df_copy.index])
+            logger.debug("Creating multiindex dataframe")
             
-            if write_columns is not None:
-                dropcolumns = [col for col in batch.columns if col not in write_columns]
-                batch = batch.drop(columns=dropcolumns)
-                logger.debug("Dropping columns from dataframe:")
-                for col in dropcolumns:
-                    logger.debug(f"\t{col}")
-            
-            if fileformat == "tsv" or ("tab" in fileformat): 
-                fext = "tsv"
-                batch.to_csv(filepath+fext, sep="\t")
-                
-            elif fileformat == "csv" or ("comma" in fileformat):
-                fext = "csv"
-                batch.to_csv(filepath+fext)
-                
-            else:
-                fext = "xlxs"
-                batch.to_excel(filepath+fext)
-                
-            logger.info(f"Saving batch {id} to {filepath+fext} ")    
+        else:       
+            logger.error(f"There is no column with name '{group_column_name}' in your study table \
+                '{os.path.split(self.records_file_path)[1]}' ")
+            return 
+             
+        group_IDs = np.unique(specimen_records_df_copy.index.get_level_values(0))
+
+        # Permute order in table
+        if reproducible:
+            logger.info(f"Using a fixed seed to random number generator for reproducibility; \
+                running this method will always give the same result.")
+            logger.debug(f"Using class-determined seed {self._seed} for random number generator")
+            np.random.seed(self._seed)
+
+        permutation_order = np.random.permutation(group_IDs)
+        
+        #logger.debug(f"new order for groups (old, new):\n{list(zip(group_IDs,self._permutation_order))}")
+        prev_index_str = "index_before_permutation"
+        
+        if prev_index_str in specimen_records_df_copy.columns:
+            specimen_records_df_copy = specimen_records_df_copy.drop(columns=prev_index_str)
+        
+        specimen_records_df_copy = specimen_records_df_copy.loc[permutation_order].reset_index(level=group_column_name).reset_index()
+        specimen_records_df_copy = specimen_records_df_copy.rename(columns = {"index": "index_before_permutation"})
+       
+        #.reset_index().rename(columns={specimen_records_df_copy.index.name: group_column_name})
+        
+        self._N_permutations += 1
+        self.specimen_records_df = specimen_records_df_copy.copy()
 
 
 

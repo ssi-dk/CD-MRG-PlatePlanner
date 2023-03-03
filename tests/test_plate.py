@@ -254,7 +254,22 @@ def test_should_get_well_QC_info_from_well_coord():
 
 
 # study CLASS
-def test_should_create_empty_study():
+@pytest.fixture
+def an_empty_study():
+    study_name = "CNS_tumor_study"
+    return Study(study_name)
+    
+@pytest.fixture
+def my_study_with_records(an_empty_study):
+    an_empty_study.load_specimen_records(records_path_xlsx)
+    return an_empty_study
+    
+@pytest.fixture
+def my_study(my_study_with_records):
+    my_study_with_records.create_batches(QCPlate(config_path, (8,12)))
+    return my_study_with_records
+    
+def test_should_create_empty_study(an_empty_study):
     study_name = "CNS_tumor_study"
     my_study = Study(study_name)
     
@@ -278,7 +293,7 @@ def test_should_import_study_records_xlsx():
 
     assert my_study.specimen_records_df.empty == False   
     
-    
+      
 def test_should_fail_import_study_records():
     study_name = "CNS_tumor_study"
     my_study = Study(study_name)
@@ -289,31 +304,18 @@ def test_should_fail_import_study_records():
     assert exception_info.value.args[0] == "missing_file"   
     
     
-def test_should_create_batches():
-    study_name = "CNS_tumor_study"
-    my_study = Study(study_name)
-    my_study.load_specimen_records(records_path_xlsx)
-    
-    my_study.create_batches(QCPlate(config_path, (8,12)))
-    
+def test_should_create_batches(my_study):    
     assert len(my_study.batches) == 14
+   
     
-def test_should_get_plate():
-    study_name = "CNS_tumor_study"
-    my_study = Study(study_name)
-    my_study.load_specimen_records(records_path_xlsx)
-    my_study.create_batches(QCPlate(config_path, (8,12)))
+def test_should_get_plate(my_study):
     
     assert my_study[0].plate_id == 1
     assert my_study[4].plate_id == 5
     assert my_study[13].plate_id == 14
     
     
-def test_should_assign_colors_to_wells_by_metadata():
-    study_name = "CNS_tumor_study"
-    my_study = Study(study_name)
-    my_study.load_specimen_records(records_path_xlsx)
-    my_study.create_batches(QCPlate(config_path, (8,12)))
+def test_should_assign_colors_to_wells_by_metadata(my_study):
     
     plate = my_study[0]
     rgbs = plate.define_metadata_colors("organ")
@@ -325,6 +327,35 @@ def test_should_assign_colors_to_wells_by_metadata():
     assert plate[95].metadata["color"] == rgbs["Tendons"]
 
 
+def test_should_write_plate_layout_to_txt_file(my_study):
+    plate = my_study[0]
+    plate.to_file()
+    file_path = "Plate_1.txt"
+    
+    assert os.path.exists(file_path) == True
+    
+    
+def test_should_write_plate_layout_to_format_from_file_extension(my_study):
+    plate = my_study[0] 
+    plate.to_file("Plate_1.csv")
+    file_path = "Plate_1.csv"
+    
+    assert os.path.exists(file_path) == True
+    
+
+def test_should_write_plate_layout_to_file_given_metadata(my_study): 
+    plate = my_study[0]
+    metadata = ["QC", "pair_ID", "organ", "barcode"]
+    file_path = "Plate_1.csv"
+    plate.to_file(file_path=file_path, metadata_keys=metadata)
+   
+    assert os.path.exists(file_path) == True
+    
+    #os.remove(file_path)
+    
+
+
+    
     
     
     
