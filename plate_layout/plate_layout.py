@@ -578,7 +578,7 @@ class  Plate:
                     to_write = [well_name, well.metadata["sample_name"]]
                     
                     for key in metadata_keys:
-                        to_write.append(well.metadata.get(key), "NaN")
+                        to_write.append(well.metadata.get(key, "NaN"))
                         
                     writer.writerow(to_write)
         else: # default: write to text file
@@ -639,7 +639,7 @@ class QCPlate(Plate):
             
     
     def __repr__(self):
-        return f"{self.__name__}(({len(self.rows)},{len(self.columns)}), plate_id={self.plate_id})"
+        return f"{self.__class__.__name__}(({len(self.rows)},{len(self.columns)}), plate_id={self.plate_id})"
     
     
     def define_unique_QC_sequences(self):
@@ -1045,6 +1045,3 @@ class Study:
 
         self._N_permutations += 1
         self.specimen_records_df = specimen_records_df_copy.copy()
-
-
-

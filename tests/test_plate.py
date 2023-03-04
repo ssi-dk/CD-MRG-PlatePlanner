@@ -35,15 +35,21 @@ def test_should_create_plate_from_tuple():
     assert len(plate_96.columns) == 12
     
     
-def test_should_create_plate_from_key_word_args():
-    plate_96 = Plate(rows=8, columns=12)
+def test_should_create_plate_from_dict_args():
+    plate_dim = {"rows":8, 
+                 "columns":12}
+    
+    plate_96 = Plate(plate_dim)
     
     assert len(plate_96.rows) == 8
     assert len(plate_96.columns) == 12
    
     
 def test_should_create_plate_id_from_key_word_args():
-    plate_96 = Plate(rows=8, columns=12, plate_id=5)
+    plate_dim = {"rows":8, 
+                 "columns":12}
+     
+    plate_96 = Plate(plate_dim, plate_id=5)
     assert plate_96.plate_id == 5
     
     
@@ -61,7 +67,7 @@ def test_should_create_plate_index_coordinates():
 def test_should_create_plate_alphanumerical_coordinates():
     plate_96 = Plate((8,12))
     
-    plate_96._alphanumerical_coordinates = Plate.create_alphanumerical_coordinates(plate_96.rows, plate_96.columns)
+    plate_96._alphanumerical_coordinates = Plate.create_alphanumerical_coordinates(plate_96.rows, plate_96.columns)[1]
     
     assert plate_96._alphanumerical_coordinates[0] == "A_1"
     assert plate_96._alphanumerical_coordinates[11] == "A_12"
@@ -76,7 +82,7 @@ def test_should_create_well_objects_in_plate():
     plate_96 = Plate((8,12))
     
     plate_96._coordinates = Plate.create_index_coordinates(plate_96.rows, plate_96.columns)
-    plate_96._alphanumerical_coordinates =Plate.create_alphanumerical_coordinates(plate_96.rows, plate_96.columns)
+    plate_96._alphanumerical_coordinates =Plate.create_alphanumerical_coordinates(plate_96.rows, plate_96.columns)[1]
     Plate.define_empty_wells(plate_96)
     
     well = plate_96.wells[0]
@@ -318,9 +324,9 @@ def test_should_get_plate(my_study):
 def test_should_assign_colors_to_wells_by_metadata(my_study):
     
     plate = my_study[0]
-    rgbs = plate.define_metadata_colors("organ")
+    rgbs = plate.define_metadata_colors(metadata_key="organ", colormap=plate._colormap)
     
-    plate.assign_well_color("organ")
+    plate.assign_well_color(metadata_key = "organ", colormap = plate._colormap)
     
     assert plate[0].metadata["color"] == rgbs["NaN"]
     assert plate[2].metadata["color"] == rgbs["Parotid glands"]
