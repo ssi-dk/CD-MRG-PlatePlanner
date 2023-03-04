@@ -25,7 +25,8 @@ dependencies = [
   "numpy",
   "pandas",
   "tomli",
-  "matplotlib"
+  "matplotlib",
+  "openpyxl"
   ]
 
 dynamic = ["version"]

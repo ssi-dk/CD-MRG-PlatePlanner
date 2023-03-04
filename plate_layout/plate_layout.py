@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-import itertools, os, tomli, glob, copy, datetime, csv, string
+import itertools, os, tomli, glob, copy, datetime, csv, string, typing
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -58,60 +58,79 @@ class Well:
         return f"Well(name={self.name}, coordinate={self.coordinate})"
 
 
-class Plate:
+class  Plate:
     
     """_summary_
     A class to represent a multiwell plate. 
     
     """
     
-    # class variables
+    # private default variables
     _specimen_code : str = "S"
     _specimen_base_name : str = "Specimen"
     _colormap : str = "tab20" # for plotting using matplotlib
     _NaN_color : tuple = (1, 1, 1)
+    _default_n_rows : int = 8
+    _default_n_columns : int = 12
+    
     
     # "public" variables 
     plate_id : int
     rows: list 
     columns: list 
     wells: list # list of well objects
+    layout: object
+    metadata : list # available metadata in wells
+    
     
     # "private" variables
     _coordinates: list # list of tuples with a pair of ints (row, column)
     _alphanumerical_coordinates: list # list of strings for canonical naming of plate coordnates, i.e A1, A2, A3, ..., B1, B2, etc
     _coordinates2index : dict # map well index to well coordinate
+    _row_labels : list # alphabet labels for rows
     _name2index : dict # map well index to well name
     _itercount : int # for use in __iter__
+    _metadata_map : dict # key = metadata, value= well index for wells containing the metadata key
+    _n_rows : int
+    _n_columns : int
     
-
     
-    # TODO ?
-    # add @singledispatch decorator to allow different implementations of constructor 
-    # for different type of arguments. Current solution no so elegant
-    def __init__(self,  *args, plate_id=1, **kwargs) -> None:    
-        """_summary_
+    
+    def __init__(self, plate_dim = None, plate_id=1):
         
-        Constructs all the necessary attributes for the Plate object, given the specifications in the plate.toml file
+        if plate_dim is None:
+            logger.info(f"Setting up a default {self._default_n_rows*self._default_n_columns}-well plate.")
+            self._n_rows = self._default_n_rows
+            self._n_columns = self._default_n_columns
         
-        """
-        
-        if args:
-            rows = args[0][0]
-            columns = args[0][1]
-        
-        if kwargs:
-            rows = kwargs["rows"]
-            columns = kwargs["columns"]
+        if isinstance(plate_dim, tuple) or isinstance(plate_dim, list):
+            if len(plate_dim) == 2:
+                self._n_rows = plate_dim[0]
+                self._n_columns = plate_dim[1]
+            else:
+                raise ValueError(f"Unsupported plate format: {plate_dim}. Must be given as a tuple '(#rows, #columns)', list '[#rows, #columns]' or an integer '#wells in total'")
+         
+        elif isinstance(plate_dim, dict):
+            self._n_rows = plate_dim.get("rows", self._default_n_rows)
+            self._n_columns = plate_dim.get("columns", self._default_n_columns)
             
+        elif isinstance(plate_dim, int):
+            # design a plate in format 2 : 3 as in 
+            # 6, 12, 24, 48, 96, 384 or 1536 plates            
+            x = np.sqrt(plate_dim * 25 / 6)
+            self._n_rows = int(np.round(2/5*x))
+            self._n_columns = int(np.round(3/5*x))
+            
+        else:
+            raise ValueError(f"Unsupported plate format: {plate_dim}. Must be given as a tuple '(#rows, #columns)', list '[#rows, #columns]' or an integer '#wells in total'")
+
         self.plate_id = plate_id
-        
-        self.rows = list(range(0,rows))
-        self.columns = list(range(0,columns))
-        self.capacity = len(self.rows) * len(self.columns)
+        self.rows = list(range(0,self._n_rows))
+        self.columns = list(range(0,self._n_columns))
+        self.capacity = self._n_rows * self._n_columns
         
         self._coordinates = Plate.create_index_coordinates(self.rows, self.columns)
-        self._alphanumerical_coordinates = Plate.create_alphanumerical_coordinates(self.rows, self.columns)
+        self._row_labels, self._alphanumerical_coordinates = Plate.create_alphanumerical_coordinates(self.rows, self.columns)
         
         self.define_empty_wells()
         self.create_plate_layout()
@@ -119,8 +138,8 @@ class Plate:
         logger.info(f"Created a plate with {len(self)} wells:")
         logger.debug(f"Canonical well coordinate:\n{self}")
         logger.debug(f"Well index coordinates:\n{self.to_numpy_array(self._coordinates)}")
-
-        
+  
+            
     @staticmethod    
     def create_index_coordinates(rows, columns) -> list:
         # count from left to right, starting at well in top left
@@ -134,25 +153,54 @@ class Plate:
     def create_alphanumerical_coordinates(rows, columns) -> list:
         alphabet = list(string.ascii_uppercase)
         
-        row_crds = alphabet
+        row_labels = alphabet
         number_of_repeats = 1
         
-        while len(rows) > len(row_crds):
-            row_crds = list(itertools.product(alphabet, repeat=number_of_repeats))
+        while len(rows) > len(row_labels):
+            row_labels = list(itertools.product(alphabet, repeat=number_of_repeats))
             number_of_repeats += 1
-            
+               
         alphanumerical_coordinates = []
-        for r_i, row in enumerate(rows):
-            for c_i, column in enumerate(columns):
+        for r_i  in rows:            
+            for c_i in columns:
                 #an_crd = row_crds[r_i], column
                 r_str = str()
-                for r in row_crds[r_i]:
+                for r in row_labels[r_i]:
                     r_str = r_str.join(r)
                 
                 alphanumerical_coordinates.append(f"{r_str}_{c_i+1}")
         
-        return alphanumerical_coordinates
+        return row_labels[0:len(rows)], alphanumerical_coordinates
         
+        
+    @staticmethod
+    def load_config_file(config_file: str = None) -> dict:
+        
+        # READ CONFIG FILE
+        if config_file is None: 
+            
+            logger.warning("No config file specified. Trying to find a toml file in current folder.")
+            
+            config_file_search = glob.glob("*.toml")      
+            
+            if config_file_search:
+                config_file = config_file_search[0]
+                logger.info(f"Using toml file '{config_file}'")
+        
+        try:
+            with open(config_file, mode="rb") as fp:
+                config = tomli.load(fp)
+            
+            logger.info(f"Successfully loaded config file {config_file}")
+            logger.debug(f"{config}")
+            
+            return config
+        
+        except FileNotFoundError:
+            logger.error(f"Could not find/open config file {config_file}")
+            
+            raise FileExistsError(config_file)
+
     
     def define_empty_wells(self):
         
@@ -282,18 +330,32 @@ class Plate:
     
     def create_plate_layout(self):
         # set metadata for wells that are for specimen samples
+        
         for i in range(0,self.capacity):
             self.wells[i].metadata["QC"] = False
             self.wells[i].metadata["sample_code"] = self._specimen_code
             self.wells[i].metadata["sample_type"] = self._specimen_base_name
             self.wells[i].metadata["sample_name"] = f"{self._specimen_code}{i+1}"
             
+    @property
+    def layout(self):
+        return self.to_numpy_array(self.get("sample_name"))
             
-    def print_layout(self) -> None:
-        sample_names = self.get("sample_name")
-        print(self.to_numpy_array(sample_names)) 
-        
-        
+    @property
+    def metadata(self):
+        return list(self._metadata_map.keys())
+    
+    @property
+    def _metadata_map(self):
+        metadata = {}
+        for well in self:
+            for key in well.metadata.keys():
+                metadata.setdefault(key, [])
+                metadata[key].append(well.metadata["index"])
+                
+        return metadata    
+    
+    
     def get(self, metadata_key) -> list:
         
         if metadata_key == "names": 
@@ -304,27 +366,12 @@ class Plate:
             return [well.metadata.get(metadata_key, "NaN") for well in self]
         
     
-    def print_metadata(self, metadata_key) -> None:
-        plate_metadata = self.get(metadata_key)
-        print(self.to_numpy_array(plate_metadata)) 
-        
-        
-    def available_metadata(self) -> dict:
-        metadata = {}
-        for well in self:
-            for key in well.metadata.keys():
-                metadata.setdefault(key, [])
-                metadata[key].append(well.metadata["index"])
-                
-        return metadata
-    
-    
     def get_metadata_as_numpy_array(self, metadata_key : str) -> object:
         metadata = self.get(metadata_key)
         return self.to_numpy_array(metadata)
     
     
-    def define_metadata_colors(self, metadata_key : str) -> dict:
+    def define_metadata_colors(self, metadata_key : str, colormap : str) -> dict:
         # get number of colors needed == number of (discrete) values represented in wells with metadata_key
         metadata_categories = np.unique(self.get(metadata_key))  
         
@@ -332,14 +379,14 @@ class Plate:
         
         RGB_colors = {}
         for i,s in enumerate(metadata_categories): 
-            col = mpl.colormaps[self._colormap](i)[0:3] #get RGB values for i-th color in colormap
-            if s != "NaN":
-                RGB_colors.setdefault(s, col) 
+            col = mpl.colormaps[colormap](i)[0:3] #get RGB values for i-th color in colormap
+            if (s != "NaN") and (pd.notnull(s)):
+                RGB_colors.setdefault(str(s), col) 
             else: 
                 RGB_colors.setdefault("NaN", self._NaN_color)
         
-        logger.debug(f"Metadata {metadata_key} has {N_colors} values: {metadata_categories}.")
-        logger.debug(f"Assigning {N_colors} colors from colormap {self._colormap} to metadata {metadata_key} as:")
+        logger.debug(f"Metadata '{metadata_key}' has {N_colors} values: {metadata_categories}.")
+        logger.debug(f"Assigning {N_colors} colors from colormap {colormap} to metadata '{metadata_key}' as:")
         
         key_length = np.max(list(map(len,metadata_categories)))
         
@@ -349,13 +396,16 @@ class Plate:
         return RGB_colors
     
     
-    def assign_well_color(self, metadata_key : str) -> dict:
-        RGB_colors = self.define_metadata_colors(metadata_key)
+    def assign_well_color(self, metadata_key : str, colormap : str) -> dict:
+        
+        RGB_colors = self.define_metadata_colors(metadata_key, colormap)
         
         # assign well color for each well according to color scheme defined above
         for well in self:
             key = well.metadata.get(metadata_key, "NaN")
-            well.metadata["color"] = RGB_colors[key]
+            if pd.isnull(key):
+                key = "NaN"
+            well.metadata["color"] = RGB_colors[str(key)]
             
         return RGB_colors
 
@@ -375,15 +425,19 @@ class Plate:
             grid_color = (1,1,1),
             edge_color = (0.5, 0.5, 0.5),
             legend_bb = (0.15, -0.2, 0.7, 1.3),
-            legend_n_columns = 6
+            legend_n_columns = 6,
+            colormap = None,
             ) -> object:
+        
+        if colormap is None:
+            colormap = self._colormap
         
         # Define title 
         if title_str is None:
             title_str = f"Plate {self.plate_id}, showing {annotation_metadata_key} colored by {color_metadata_key}"
              
         # DEFINE COLORS FOR METADATA VALUES  
-        RGB_colors = self.assign_well_color(color_metadata_key)
+        RGB_colors = self.assign_well_color(color_metadata_key, colormap)
         
         # DEFINE GRID FOR WELLS
         # 1 - define the lower and upper limits 
@@ -459,7 +513,7 @@ class Plate:
 
         # Y axis
         ax.set_yticks(y)
-        ax.set_yticklabels(self.rows[::-1])
+        ax.set_yticklabels(self._row_labels[::-1])
         ax.yaxis.grid(color=grid_color, linestyle='dashed', linewidth=1)
         ax.set_ylim(-1*y.max()*0.07,y.max()*1.07)
         
@@ -524,7 +578,7 @@ class Plate:
                     to_write = [well_name, well.metadata["sample_name"]]
                     
                     for key in metadata_keys:
-                        to_write.append(well.metadata.get(key), "NaN")
+                        to_write.append(well.metadata.get(key, "NaN"))
                         
                     writer.writerow(to_write)
         else: # default: write to text file
@@ -553,9 +607,9 @@ class Plate:
 # A plate with QC samples is a subclass of a Plate class
 class QCPlate(Plate):
     """_summary_
-    Class that represents a multiwell plate where some wells should 
+    Class that represents a multiwell plate where some wells can 
     contain quality control samples according to the scheme defined 
-    in <config_file.toml>
+    in QC_config; either a <config_file.toml> file or a dict following the same structure
 
     Args:
         Plate (_type_): _description_
@@ -566,48 +620,27 @@ class QCPlate(Plate):
     _well_inds_QC : list
     _well_inds_specimens : list
     
-    def __init__(self, config_file = None, *args, **kwargs):
+    def __init__(self, QC_config = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        self.configfile = config_file
         
-        self.load_config_file(config_file)
-        
-        if self.config is not None: 
-            self.create_QC_plate_layout()
-    
+        if QC_config is not None:
+            
+            if isinstance(QC_config, dict):
+                self.config = QC_config
+            else:                                        
+                self.config = Plate.load_config_file(QC_config)
+            
+            if self.config is not None: 
+                self.create_QC_plate_layout()
+                
+            else:
+                logger.error(f"No scheme for QC samples provided.")
+            
     
     def __repr__(self):
-        return f"QCPlate(({len(self.rows)},{len(self.columns)}), plate_id={self.plate_id})"
+        return f"{self.__class__.__name__}(({len(self.rows)},{len(self.columns)}), plate_id={self.plate_id})"
     
-          
-       
-    def load_config_file(self, config_file: str = None):
-        
-        # READ CONFIG FILE
-        if config_file is None: 
-            
-            logger.warning("No config file specified. Trying to find a toml file in current folder.")
-            
-            config_file_search = glob.glob("*.toml")      
-            
-            if config_file_search:
-                config_file = config_file_search[0]
-                logger.info(f"Using toml file '{config_file}'")
-  
-        
-        try:
-            with open(config_file, mode="rb") as fp:
-                self.config = tomli.load(fp)
-            
-            logger.info(f"Successfully loaded config file {config_file}")
-            logger.debug(f"{self.config}")
-            
-        except FileNotFoundError:
-            logger.error(f"Could not find/open config file {config_file}")
-            self.config = None
-            raise FileExistsError(config_file)
-
     
     def define_unique_QC_sequences(self):
         """_summary_
@@ -697,6 +730,8 @@ class QCPlate(Plate):
 
     def create_QC_plate_layout(self):
         
+        logger.info(f"Creating plate layout with QC samples.")
+        
         self.define_unique_QC_sequences()
         self.define_QC_rounds()
         
@@ -739,14 +774,15 @@ class Study:
     name = str
     plate_layout = object
     QC_config_file = str
-    batches = list
+    batches : list = []
     
-    specimen_records : object
+    specimen_records_df : object = pd.DataFrame()
     
-    _batch_count : int
-    _iter_count : int
+    _batch_count : int = 0
+    _iter_count : int = 0
     _seed = 1234 # seed number for the random number generator in case randomization of specimens should be reproducible
-    _N_permutations : int
+    _N_permutations : int = 0
+    _column_with_group_index : str = ""
     
     def __init__(self, 
                  study_name=None, 
@@ -756,11 +792,6 @@ class Study:
             study_name = f"Study_{datetime.date}"
             
         self.name = study_name
-        self.study_specimens = 0
-        self.N_batches = 0
-        self.batches = []
-        
-        self._N_permutations = 0
         
         
     def __iter__(self) -> None:
@@ -776,6 +807,7 @@ class Study:
             raise StopIteration
         
         return plate_to_return
+    
     
     def __len__(self):
         return len(self.batches)
@@ -793,9 +825,6 @@ class Study:
         return self.batches[index]
     
     
-    # def __contains__():
-    #     pass
-    
     def load_specimen_records(self, records_file : str):
         
         self.records_file_path = records_file
@@ -809,19 +838,26 @@ class Study:
         
         if extension == ".xlsx":
             logger.debug(f"Importing Excel file.")
-            records = pd.read_excel(records_file, index_col=0)
+            records = pd.read_excel(records_file, )
         elif extension == ".csv":
             logger.debug(f"Importing csv file.")
-            records = pd.read_csv(records_file, index_col=0)
+            records = pd.read_csv(records_file, )
         else:
             logger.error(f"File extension not recognized")
             records = pd.DataFrame()
+               
+        self._column_with_group_index = Study.find_column_with_group_index(records)
+        
+        if self._column_with_group_index:
+            logger.debug(f"Sorting records in ascending order based on column '{self._column_with_group_index}'")
+            records = records.sort_values(by=[self._column_with_group_index])
             
         self.specimen_records_df = records
-          
+             
     
     def add_specimens_to_plate(self, study_plate: object, specimen_samples_df: object) -> object:
         
+        logger.debug(f"Adding samples to plate {study_plate.plate_id}")
         columns = specimen_samples_df.columns
         
         # keep track on how many wells we should use per batch
@@ -845,7 +881,7 @@ class Study:
             study_plate[i] = well
             
             if plate_specimen_count >= N_specimens_left:
-                    logger.debug(f"Finished distributing specimen samples to plate wells. Last specimen is {well}")
+                    logger.debug(f"\t -> Done. Last specimen placed in {well.name}")
                     break
                 
         return study_plate
@@ -881,12 +917,16 @@ class Study:
             folder_path = os.getcwd()
             
         for plate in self:
-            file_name = f"{base_name}_{plate.plate_id}.{file_format}"
+            file_name = f"{self.name}_{base_name}_{plate.plate_id}_{annotation_metadata_key}_{color_metadata_key}.{file_format}"
             file_path = os.path.join(folder_path, file_name)
             
-            fig = plate.to_figure(annotation_metadata_key, color_metadata_key, **kwargs)
+            # Define title        
+            title_str = f"{self.name}: Plate {plate.plate_id}, showing {annotation_metadata_key} colored by {color_metadata_key}"
+           
+            fig = plate.to_figure(annotation_metadata_key, color_metadata_key, title_str=title_str, **kwargs)
     
             plt.savefig(file_path)
+    
     
     def create_batches(self, plate_layout : object) -> None: 
             
@@ -894,7 +934,6 @@ class Study:
         batches = []
         
         # get specimen data from study list
-        
         specimen_df_copy = self.specimen_records_df.copy()
         
         while specimen_df_copy.shape[0] > 0:
@@ -911,7 +950,6 @@ class Study:
             specimen_df_copy.reset_index(inplace=True, drop=True)
 
             # add specimen to plate
-            logger.debug(f"Populating plate {batch_count}")
             study_plate = self.add_specimens_to_plate(study_plate, sel)
             
             batches.append(study_plate)
@@ -924,27 +962,63 @@ class Study:
         self.N_batches = batch_count - 1
 
         logger.info(f"Finished distributing samples to plates; {self.N_batches} batches created.")
+       
         
+    @staticmethod
+    def find_column_with_group_index(specimen_records_df) -> str:
+        # Select columns that are integers; currently we can only identify groups based on pair _numbers_ 
+        int_cols = specimen_records_df.select_dtypes("int")
+                    
+        logger.debug(f"Looking for group index of study pairs in the following table columns:")
         
-    def randomize_group_order(self, group_column_name, reproducible : bool = True) -> None:
-        # Note: I chose not to modify DFs "by reference", i.e  set inplace=True, as the DS community 
-        # seem to want explicit ("by value") modifications using = operator.
+        for col_name in int_cols.columns:
+            
+            logger.debug(f"\t\t{col_name}")
+            
+            # sort in ascending order
+            int_col = int_cols[col_name].sort_values()
+            # compute difference: n_1 - n_2, n_2 - n_3, ...
+            int_diffs = np.diff(int_col)
+            # count instances were numbers were the same, i.e. diff == 0
+            n_zeros = np.sum(list(map(lambda x: x==0, int_diffs)))
+            # we assume column contains pairs if #pairs == #samples / 2
+            column_have_pairs = n_zeros == (int_col.shape[0]//2)
+
+            if column_have_pairs:# we found a column so let's assume it is the correct one
+                logger.info(f"Found group index in column {col_name}")
+                return col_name
+            
+        return "" 
+    
+    
+    def randomize_order(self, case_control : bool = None, reproducible=True):
         
         if not len(self.specimen_records_df) > 0:
             logger.error("There are no study records loaded. Use 'load_specimen_records' method to import study records.")
-            
-        logger.info(f"Randomly permuting group order (samples within group unchanged) using variable '{group_column_name}'")
+            return
+        
+        if case_control is None:
+            if self._column_with_group_index:
+                case_control = True
+            else:
+                case_control = False
+        
         specimen_records_df_copy = self.specimen_records_df.copy()
         
-        if group_column_name in self.specimen_records_df.columns: 
-            specimen_records_df_copy = specimen_records_df_copy.set_index([group_column_name, specimen_records_df_copy.index])
+        if case_control:
+            column_with_group_index = self._column_with_group_index
+                        
+            logger.info(f"Randomly permuting group order (samples within group unchanged) using variable '{column_with_group_index}'")
             logger.debug("Creating multiindex dataframe")
+            specimen_records_df_copy = specimen_records_df_copy.set_index([column_with_group_index, specimen_records_df_copy.index])
+            drop = False
+        else:
+            logger.info(f"Randomly permuting sample order.")
+            specimen_records_df_copy = specimen_records_df_copy.set_index([specimen_records_df_copy.index, specimen_records_df_copy.index])
+            column_with_group_index = 0
+            drop = True
             
-        else:       
-            logger.error(f"There is no column with name '{group_column_name}' in your study table \
-                '{os.path.split(self.records_file_path)[1]}' ")
-            return 
-             
+            
         group_IDs = np.unique(specimen_records_df_copy.index.get_level_values(0))
 
         # Permute order in table
@@ -956,19 +1030,18 @@ class Study:
 
         permutation_order = np.random.permutation(group_IDs)
         
-        #logger.debug(f"new order for groups (old, new):\n{list(zip(group_IDs,self._permutation_order))}")
         prev_index_str = "index_before_permutation"
         
+        # if multiple randomization rounds, remove old column = prev_index_str 
         if prev_index_str in specimen_records_df_copy.columns:
             specimen_records_df_copy = specimen_records_df_copy.drop(columns=prev_index_str)
         
-        specimen_records_df_copy = specimen_records_df_copy.loc[permutation_order].reset_index(level=group_column_name).reset_index()
-        specimen_records_df_copy = specimen_records_df_copy.rename(columns = {"index": "index_before_permutation"})
-       
-        #.reset_index().rename(columns={specimen_records_df_copy.index.name: group_column_name})
+        specimen_records_df_copy = specimen_records_df_copy \
+                                    .loc[permutation_order]\
+                                    .reset_index(level=column_with_group_index, drop=drop)\
+                                    .reset_index(drop=False)
         
+        specimen_records_df_copy = specimen_records_df_copy.rename(columns = {"index": "index_before_permutation"})
+
         self._N_permutations += 1
         self.specimen_records_df = specimen_records_df_copy.copy()
-
-
-
