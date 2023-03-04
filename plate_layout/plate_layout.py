@@ -102,7 +102,6 @@ class  Plate:
             logger.info(f"Setting up a default {self._default_n_rows*self._default_n_columns}-well plate.")
             self._n_rows = self._default_n_rows
             self._n_columns = self._default_n_columns
-          
         
         if isinstance(plate_dim, tuple) or isinstance(plate_dim, list):
             if len(plate_dim) == 2:
@@ -111,7 +110,6 @@ class  Plate:
             else:
                 raise ValueError(f"Unsupported plate format: {plate_dim}. Must be given as a tuple '(#rows, #columns)', list '[#rows, #columns]' or an integer '#wells in total'")
          
-        
         elif isinstance(plate_dim, dict):
             self._n_rows = plate_dim.get("rows", self._default_n_rows)
             self._n_columns = plate_dim.get("columns", self._default_n_columns)
@@ -127,12 +125,6 @@ class  Plate:
             raise ValueError(f"Unsupported plate format: {plate_dim}. Must be given as a tuple '(#rows, #columns)', list '[#rows, #columns]' or an integer '#wells in total'")
 
         self.plate_id = plate_id
-        self.setup_plate()
-       
-
-        
-    def setup_plate(self):
-
         self.rows = list(range(0,self._n_rows))
         self.columns = list(range(0,self._n_columns))
         self.capacity = self._n_rows * self._n_columns
