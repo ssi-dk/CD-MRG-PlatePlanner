@@ -5,8 +5,8 @@ import itertools, os, tomli, glob, copy, datetime, csv, string
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-from pl_logger import logger
-# from .pl_logger import logger
+#from pl_logger import logger
+from .pl_logger import logger
 
 
 # parameters governing how numpy arrays are printed to console

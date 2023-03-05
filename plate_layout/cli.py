@@ -1,19 +1,20 @@
 
-# from .plate_layout import Study
-# from .plate_layout import Plate
-# from .plate_layout import QCPlate
-# from .pl_logger import logger
-from plate_layout import Study
-from plate_layout import Plate
-from plate_layout import QCPlate 
-from pl_logger import logger
+from .plate_layout import Study
+from .plate_layout import Plate
+from .plate_layout import QCPlate
+from .pl_logger import logger
+# from plate_layout import Study
+# from plate_layout import Plate
+# from plate_layout import QCPlate 
+# from pl_logger import logger
 from datetime import date
 
 import logging, argparse, os
 
 def setup_option_parser(parser):
     
-        parser.add_argument("--study-file",
+        parser.add_argument("study-file",
+                            required=True,
                         help="csv/excel file with study specimen samples")
         
         parser.add_argument("--randomize",
@@ -39,11 +40,24 @@ def setup_option_parser(parser):
                             default='debug',
                         help="level of information printed to console")
         
-        parser.add_argument("--export", help="<''>")
+        parser.add_argument("--export-data", 
+                            choices=['all', 'lists', 'figures', 'off' ],
+                            default='all',
+                            help="set which data should be exported to file")
         
         parser.add_argument("--metadata", help="Column names (metadata) from the study input file that will be printed to lists. The last two will be used when rendering figures, where the second last annotates the plate by color and the last annotates by value.", nargs='+')
         
-
+        parser.add_argument("--file-format",
+                            choices=['txt', 'csv', 'xlsx'],
+                            default='text',
+                            help="file format for plate layout lists"
+                            )
+        
+        parser.add_argument("--figure-format",
+                            choices=['pdf', 'png'],
+                            default='pdf',
+                            help="file format for plate layout figures"
+                            )
 
         return parser.parse_args()
     
@@ -105,8 +119,8 @@ def main():
         if not os.path.exists(op.output_folder):
             os.mkdir(op.output_folder)
                           
-    study.to_layout_lists(metadata_keys = op.metadata, folder_path=op.output_folder, plate_name=op.name)
-    study.to_layout_figures(op.metadata[1], op.metadata[0],folder_path=op.output_folder, plate_name=op.name)
+    study.to_layout_lists(metadata_keys = op.metadata, folder_path=op.output_folder)
+    study.to_layout_figures(op.metadata[1], op.metadata[0],folder_path=op.output_folder)
 
     
 if __name__ == "__main__":
