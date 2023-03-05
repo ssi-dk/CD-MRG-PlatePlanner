@@ -12,7 +12,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": ["--study-file", "data/fake_case_control_Npairs_523_Ngroups_5.csv",
-                    "--metadata", "organ", "barcode"], 
+                    "--metadata", "organ", "barcode",
+                    "--qc-file", "config/plate_config.toml"], 
             "justMyCode": true
         }
     ]
