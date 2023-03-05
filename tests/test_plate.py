@@ -5,6 +5,7 @@ from plate_layout.plate_layout import Plate
 from plate_layout.plate_layout import Well
 from plate_layout.plate_layout import Study
 from plate_layout.plate_layout import QCPlate
+from plate_layout.plate_layout import Guide
 
 config_folder = os.path.abspath(os.path.join(os.getcwd(), "config/"))
 config_file = "plate_config.toml"
@@ -358,11 +359,3 @@ def test_should_write_plate_layout_to_file_given_metadata(my_study):
     assert os.path.exists(file_path) == True
     
     #os.remove(file_path)
-    
-
-
-    
-    
-    
-    
-    

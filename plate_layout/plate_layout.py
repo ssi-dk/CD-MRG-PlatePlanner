@@ -98,6 +98,7 @@ class  Plate:
     _metadata_map : dict # key = metadata, value= well index for wells containing the metadata key
     _n_rows : int
     _n_columns : int
+    _specimen_capacity : int
     
     
     def __init__(self, plate_dim = None, plate_id=1):
@@ -132,6 +133,7 @@ class  Plate:
         self.rows = list(range(0,self._n_rows))
         self.columns = list(range(0,self._n_columns))
         self.capacity = self._n_rows * self._n_columns
+        self._specimen_capacity = self.capacity
         
         self._coordinates = Plate.create_index_coordinates(self.rows, self.columns)
         self._row_labels, self._alphanumerical_coordinates = Plate.create_alphanumerical_coordinates(self.rows, self.columns)
@@ -139,9 +141,9 @@ class  Plate:
         self.define_empty_wells()
         self.create_plate_layout()
         
-        logger.info(f"Created a plate with {len(self)} wells:")
-        logger.debug(f"Canonical well coordinate:\n{self}")
-        logger.debug(f"Well index coordinates:\n{self.to_numpy_array(self._coordinates)}")
+        logger.info(f"Created a plate template with {len(self)} wells:")
+        logger.debug(f"Canonical well coordinates:\n{self}")
+        #logger.debug(f"Well index coordinates:\n{self.to_numpy_array(self._coordinates)}")
   
             
     @staticmethod    
@@ -729,7 +731,7 @@ class QCPlate(Plate):
         self._QC_rounds = QC_rounds
         self._well_inds_QC = QC_well_indices
         self._well_inds_specimens = [w for w in range(0,self.capacity) if w not in QC_well_indices]
-        self.specimen_capacity = len(self._well_inds_specimens)
+        self._specimen_capacity = len(self._well_inds_specimens)
 
 
     def create_QC_plate_layout(self):
@@ -852,6 +854,12 @@ class Study:
                
         self._column_with_group_index = Study.find_column_with_group_index(records)
         
+        logger.debug(f"{records.shape[0]} specimens in file")
+        logger.info(f"Metadata in file:")
+        for col in records.columns:
+            logger.info(f"\t{col}")
+        
+        
         if self._column_with_group_index:
             logger.debug(f"Sorting records in ascending order based on column '{self._column_with_group_index}'")
             records = records.sort_values(by=[self._column_with_group_index])
@@ -896,13 +904,13 @@ class Study:
     def to_layout_lists(self, metadata_keys: list = None, 
                         file_format : str = "txt",
                         folder_path : str = None,
-                        base_name : str = "Plate") -> None:
+                        plate_name : str = "Plate") -> None:
         
         if folder_path is None: 
             folder_path = os.getcwd()
         
         for plate in self:
-            file_name = f"{base_name}_{plate.plate_id}"
+            file_name = f"{self.name}_{plate_name}_{plate.plate_id}"
             file_path = os.path.join(folder_path, file_name)
             
             plate.to_file(file_path=file_path,
@@ -915,13 +923,13 @@ class Study:
                           color_metadata_key : str,
                         file_format : str = "pdf",
                         folder_path : str = None,
-                        base_name : str = "Plate", **kwargs) -> None:
+                        plate_name : str = "Plate", **kwargs) -> None:
         
         if folder_path is None: 
             folder_path = os.getcwd()
             
         for plate in self:
-            file_name = f"{self.name}_{base_name}_{plate.plate_id}_{annotation_metadata_key}_{color_metadata_key}.{file_format}"
+            file_name = f"{self.name}_{plate_name}_{plate.plate_id}_{annotation_metadata_key}_{color_metadata_key}.{file_format}"
             file_path = os.path.join(folder_path, file_name)
             
             # Define title        
@@ -946,7 +954,7 @@ class Study:
             study_plate.plate_id = batch_count
                             
             # extract max specimen samples that will fit on plate; select from top and remove them from original DF
-            sel = specimen_df_copy.head(study_plate.specimen_capacity)
+            sel = specimen_df_copy.head(study_plate._specimen_capacity)
             specimen_df_copy.drop(index=sel.index, inplace=True) 
             
             # reset index to so that rows always start with index 0

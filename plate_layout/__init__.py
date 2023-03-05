@@ -5,9 +5,6 @@ from .plate_layout import Plate
 from .plate_layout import QCPlate
 from .plate_layout import Study
 
-from .logger import logger
-
-
-
+from .pl_logger import logger
 
 

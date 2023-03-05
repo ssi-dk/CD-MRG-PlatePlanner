@@ -1,7 +1,6 @@
 [QC]
 # These config parameters determine how QC samples are distributed on the plate. 
 
-
 # QC round = a sequence of QC samples included before and/or 
 #           after a sequence of analytical (specimen) samples
 
