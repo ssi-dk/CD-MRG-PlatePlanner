@@ -1,17 +1,22 @@
 import numpy as np
 import pandas as pd
-
-import itertools, os, tomli, glob, copy, datetime, csv, string, typing
+import itertools, os, tomli, glob, copy, datetime, csv, string
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-# custom class for logging
-from .logger import logger
+from pl_logger import logger
+# from .pl_logger import logger
+
 
 # parameters governing how numpy arrays are printed to console
 np.set_printoptions(threshold=np.inf)
 np.set_printoptions(linewidth=np.inf)
+
+#TODO
+# The well size in figures should dynamically be set depending on 
+# the number of wells in the plate. Currently it is an optional argument to
+# the plot function. 
 
 # TODO
 # Try out Sphinx to generate automatic(?) docs for the module
@@ -93,7 +98,6 @@ class  Plate:
     _metadata_map : dict # key = metadata, value= well index for wells containing the metadata key
     _n_rows : int
     _n_columns : int
-    
     
     
     def __init__(self, plate_dim = None, plate_id=1):
@@ -836,7 +840,7 @@ class Study:
             logger.error(f"Could not find file{records_file}")
             raise FileExistsError(records_file)
         
-        if extension == ".xlsx":
+        if extension == ".xlsx" or extension == ".xls":
             logger.debug(f"Importing Excel file.")
             records = pd.read_excel(records_file, )
         elif extension == ".csv":
@@ -1045,3 +1049,4 @@ class Study:
 
         self._N_permutations += 1
         self.specimen_records_df = specimen_records_df_copy.copy()
+       
