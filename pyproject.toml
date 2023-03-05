@@ -36,6 +36,10 @@ dynamic = ["version"]
 #Issues = "https://github.com/unknown/plate-layout/issues"
 Source = "https://github.com/ssi-dk/CD-MRG-plate_layout"
 
+# add entry point for CLI 
+[project.scripts]
+plate-layout = "plate_layout.cli:main"
+
 [tool.hatch.version]
 path = "plate_layout/__about__.py"
 
