@@ -937,6 +937,8 @@ class Study:
            
             fig = plate.to_figure(annotation_metadata_key, color_metadata_key, title_str=title_str, **kwargs)
     
+            logger.info(f"Saving plate figure to {file_path}")
+            
             plt.savefig(file_path)
     
     
