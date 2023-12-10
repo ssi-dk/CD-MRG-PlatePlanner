@@ -780,7 +780,7 @@ class Study:
     name = str
     plate_layout = object
     QC_config_file = str
-    batches : list = []
+    plates : list = []
     
     specimen_records_df : object = pd.DataFrame()
     
@@ -806,8 +806,8 @@ class Study:
         
         
     def __next__(self) -> object:
-        if self._iter_count < self.N_batches:
-            plate_to_return = self.batches[self._iter_count]
+        if self._iter_count < self.total_plates:
+            plate_to_return = self.plates[self._iter_count]
             self._iter_count += 1
         else:
             raise StopIteration
@@ -816,7 +816,7 @@ class Study:
     
     
     def __len__(self):
-        return len(self.batches)
+        return len(self.plates)
         
     
     def __repr__(self):
@@ -824,11 +824,11 @@ class Study:
 
 
     def __str__(self):
-        return f"{self.name}\n {self.study_specimens} on {self.N_batches}"
+        return f"{self.name}\n {self.study_specimens} on {self.total_plates}"
 
     
     def __getitem__(self, index):
-        return self.batches[index]
+        return self.plates[index]
     
     
     def load_specimen_records(self, records_file : str, sample_group_id_column=None):
@@ -868,7 +868,22 @@ class Study:
             records = records.sort_values(by=[self._column_with_group_index])
             
         self.specimen_records_df = records
-             
+
+    def sort_records_within_groups(self, sortby_column) -> None:
+
+        if self._column_with_group_index:
+            logger.info(f"Sorting samples within {self._column_with_group_index} by {sortby_column}")
+            # Step 1: Group the DataFrame by 'group_ID'
+            grouped = self.specimen_records_df.groupby(self._column_with_group_index)
+
+            # Step 2: Sort each group by the 'sortby_column' column
+            sorted_groups = [group.sort_values(sortby_column) for _, group in grouped]
+
+            # Step 3: Concatenate the sorted groups back into a single DataFrame
+            self.specimen_records_df = pd.concat(sorted_groups)
+
+        else:
+            raise ValueError(f"No group column defined: self._column_with_group_index: {self._column_with_group_index}")
     
     def add_specimens_to_plate(self, study_plate: object, specimen_samples_df: object) -> object:
         
@@ -903,7 +918,6 @@ class Study:
                 
         # --- END OF FOOR LOOP ---
     
-    
     def to_layout_lists(self, metadata_keys: list = None, 
                         file_format : str = "txt",
                         folder_path : str = None,
@@ -919,7 +933,6 @@ class Study:
             plate.to_file(file_path=file_path,
                           file_format=file_format,
                           metadata_keys=metadata_keys)
-    
     
     def to_layout_figures(self,
                           annotation_metadata_key : str,
@@ -944,68 +957,66 @@ class Study:
             
             plt.savefig(file_path)
     
-    
-def distribute_samples_to_plates(self, plate_layout, allow_group_split=False):
-    """
-    Distributes samples to plates, ensuring that samples in the same group
-    are not split across plates unless allow_group_split is True.
+    def distribute_samples_to_plates(self, plate_layout, allow_group_split=False):
+        """
+        Distributes samples to plates, ensuring that samples in the same group
+        are not split across plates unless allow_group_split is True.
 
-    Parameters:
-    plate_layout (object): The layout of the plates.
-    allow_group_split (bool): Flag to allow splitting groups over multiple plates.
-    """
+        Parameters:
+        plate_layout (object): The layout of the plates.
+        allow_group_split (bool): Flag to allow splitting groups over multiple plates.
+        """
 
-    plate_number = 1
-    plates = []
+        plate_number = 1
+        plates = []
 
-    # Copy the specimen data to work on
-    remaining_specimens = self.specimen_records_df.copy()
+        # Copy the specimen data to work on
+        remaining_specimens = self.specimen_records_df.copy()
 
-    while not remaining_specimens.empty:
-        current_plate = copy.deepcopy(plate_layout)
-        current_plate.plate_id = plate_number
+        while not remaining_specimens.empty:
+            current_plate = copy.deepcopy(plate_layout)
+            current_plate.plate_id = plate_number
 
-        # Select specimens for the current plate
-        selected_specimens = remaining_specimens.head(current_plate.specimen_capacity)
+            # Select specimens for the current plate
+            selected_specimens = remaining_specimens.head(current_plate._specimen_capacity)
 
-        if not allow_group_split:
-            # Extract unique group IDs from the selected specimens. This step identifies the distinct groups
-            # that are represented within the specimens currently being considered for this plate.
-            group_ids = selected_specimens[self.group_column_name].unique()
+            if not allow_group_split:
+                # Extract unique group IDs from the selected specimens. This step identifies the distinct groups
+                # that are represented within the specimens currently being considered for this plate.
+                group_ids = selected_specimens[self._column_with_group_index].unique()
 
-            # Find all specimens in the remaining pool that belong to the same groups as the selected specimens.
-            specimens_in_groups = remaining_specimens[remaining_specimens[self.group_column_name].isin(group_ids)]
+                # Find all specimens in the remaining pool that belong to the same groups as the selected specimens.
+                specimens_in_groups = remaining_specimens[remaining_specimens[self._column_with_group_index].isin(group_ids)]
 
-            if len(specimens_in_groups) > len(selected_specimens):
-                # If there are more specimens in the remaining pool belonging to the same groups,
-                # it indicates that the last group in 'selected_specimens' is split between this plate and the remaining pool.
-                # To avoid splitting the group, we modify 'selected_specimens' to exclude this last group.
+                if len(specimens_in_groups) > len(selected_specimens):
+                    # If there are more specimens in the remaining pool belonging to the same groups,
+                    # it indicates that the last group in 'selected_specimens' is split between this plate and the remaining pool.
+                    # To avoid splitting the group, we modify 'selected_specimens' to exclude this last group.
 
-                # Determine the groups to keep on the current plate. This is done by excluding the last group ID
-                # from the list of unique group IDs in the selected specimens. This way, we ensure that an entire group 
-                # is not split across plates.
-                groups_to_keep = group_ids[:-1]
+                    # Determine the groups to keep on the current plate. This is done by excluding the last group ID
+                    # from the list of unique group IDs in the selected specimens. This way, we ensure that an entire group 
+                    # is not split across plates.
+                    groups_to_keep = group_ids[:-1]
 
-                # Update 'selected_specimens' to only include specimens from the groups that are not split.
-                selected_specimens = selected_specimens[selected_specimens[self.group_column_name].isin(groups_to_keep)]
+                    # Update 'selected_specimens' to only include specimens from the groups that are not split.
+                    selected_specimens = selected_specimens[selected_specimens[self._column_with_group_index].isin(groups_to_keep)]
 
-        # Remove selected specimens from the pool
-        remaining_specimens.drop(index=selected_specimens.index, inplace=True)
-        selected_specimens.reset_index(drop=True, inplace=True)
-        remaining_specimens.reset_index(drop=True, inplace=True)
+            # Remove selected specimens from the pool
+            remaining_specimens.drop(index=selected_specimens.index, inplace=True)
+            selected_specimens.reset_index(drop=True, inplace=True)
+            remaining_specimens.reset_index(drop=True, inplace=True)
 
-        # Add specimens to the current plate
-        current_plate = self.add_specimens_to_plate(current_plate, selected_specimens)
-        plates.append(current_plate)
+            # Add specimens to the current plate
+            current_plate = self.add_specimens_to_plate(current_plate, selected_specimens)
+            plates.append(current_plate)
 
-        plate_number += 1
+            plate_number += 1
 
-    self.plates = plates
-    self.total_plates = plate_number - 1
+        self.plates = plates
+        self.total_plates = plate_number - 1
 
-    logger.info(f"Distributed samples across {self.total_plates} plates.")
+        logger.info(f"Distributed samples across {self.total_plates} plates.")
        
-        
     @staticmethod
     def find_column_with_group_index(specimen_records_df) -> str:
         # Select columns that are integers; currently we can only identify groups based on pair _numbers_ 
@@ -1031,7 +1042,6 @@ def distribute_samples_to_plates(self, plate_layout, allow_group_split=False):
                 return col_name
             
         return "" 
-    
     
     def randomize_order(self, case_control : bool = None, reproducible=True):
         
