@@ -831,7 +831,7 @@ class Study:
         return self.batches[index]
     
     
-    def load_specimen_records(self, records_file : str):
+    def load_specimen_records(self, records_file : str, sample_group_id_column=None):
         
         self.records_file_path = records_file
         
@@ -852,7 +852,10 @@ class Study:
             logger.error(f"File extension not recognized")
             records = pd.DataFrame()
                
-        self._column_with_group_index = Study.find_column_with_group_index(records)
+        if sample_group_id_column is None:
+            self._column_with_group_index = Study.find_column_with_group_index(records)
+        else:
+            self._column_with_group_index = sample_group_id_column
         
         logger.debug(f"{records.shape[0]} specimens in file")
         logger.info(f"Metadata in file:")
@@ -869,7 +872,7 @@ class Study:
     
     def add_specimens_to_plate(self, study_plate: object, specimen_samples_df: object) -> object:
         
-        logger.debug(f"Adding samples to plate {study_plate.plate_id}")
+        logger.debug(f"Adding {len(specimen_samples_df)} samples to plate {study_plate.plate_id}")
         columns = specimen_samples_df.columns
         
         # keep track on how many wells we should use per batch
@@ -942,40 +945,65 @@ class Study:
             plt.savefig(file_path)
     
     
-    def create_batches(self, plate_layout : object) -> None: 
-            
-        batch_count = 1
-        batches = []
-        
-        # get specimen data from study list
-        specimen_df_copy = self.specimen_records_df.copy()
-        
-        while specimen_df_copy.shape[0] > 0:
+def distribute_samples_to_plates(self, plate_layout, allow_group_split=False):
+    """
+    Distributes samples to plates, ensuring that samples in the same group
+    are not split across plates unless allow_group_split is True.
 
-            study_plate = copy.deepcopy(plate_layout)
-            study_plate.plate_id = batch_count
-                            
-            # extract max specimen samples that will fit on plate; select from top and remove them from original DF
-            sel = specimen_df_copy.head(study_plate._specimen_capacity)
-            specimen_df_copy.drop(index=sel.index, inplace=True) 
-            
-            # reset index to so that rows always start with index 0
-            sel.reset_index(inplace=True, drop=True)
-            specimen_df_copy.reset_index(inplace=True, drop=True)
+    Parameters:
+    plate_layout (object): The layout of the plates.
+    allow_group_split (bool): Flag to allow splitting groups over multiple plates.
+    """
 
-            # add specimen to plate
-            study_plate = self.add_specimens_to_plate(study_plate, sel)
-            
-            batches.append(study_plate)
-            
-            batch_count += 1
+    plate_number = 1
+    plates = []
 
-        # --- END OF WHILE LOOP ---
-        
-        self.batches = batches
-        self.N_batches = batch_count - 1
+    # Copy the specimen data to work on
+    remaining_specimens = self.specimen_records_df.copy()
 
-        logger.info(f"Finished distributing samples to plates; {self.N_batches} batches created.")
+    while not remaining_specimens.empty:
+        current_plate = copy.deepcopy(plate_layout)
+        current_plate.plate_id = plate_number
+
+        # Select specimens for the current plate
+        selected_specimens = remaining_specimens.head(current_plate.specimen_capacity)
+
+        if not allow_group_split:
+            # Extract unique group IDs from the selected specimens. This step identifies the distinct groups
+            # that are represented within the specimens currently being considered for this plate.
+            group_ids = selected_specimens[self.group_column_name].unique()
+
+            # Find all specimens in the remaining pool that belong to the same groups as the selected specimens.
+            specimens_in_groups = remaining_specimens[remaining_specimens[self.group_column_name].isin(group_ids)]
+
+            if len(specimens_in_groups) > len(selected_specimens):
+                # If there are more specimens in the remaining pool belonging to the same groups,
+                # it indicates that the last group in 'selected_specimens' is split between this plate and the remaining pool.
+                # To avoid splitting the group, we modify 'selected_specimens' to exclude this last group.
+
+                # Determine the groups to keep on the current plate. This is done by excluding the last group ID
+                # from the list of unique group IDs in the selected specimens. This way, we ensure that an entire group 
+                # is not split across plates.
+                groups_to_keep = group_ids[:-1]
+
+                # Update 'selected_specimens' to only include specimens from the groups that are not split.
+                selected_specimens = selected_specimens[selected_specimens[self.group_column_name].isin(groups_to_keep)]
+
+        # Remove selected specimens from the pool
+        remaining_specimens.drop(index=selected_specimens.index, inplace=True)
+        selected_specimens.reset_index(drop=True, inplace=True)
+        remaining_specimens.reset_index(drop=True, inplace=True)
+
+        # Add specimens to the current plate
+        current_plate = self.add_specimens_to_plate(current_plate, selected_specimens)
+        plates.append(current_plate)
+
+        plate_number += 1
+
+    self.plates = plates
+    self.total_plates = plate_number - 1
+
+    logger.info(f"Distributed samples across {self.total_plates} plates.")
        
         
     @staticmethod
