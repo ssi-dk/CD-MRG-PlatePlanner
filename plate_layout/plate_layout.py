@@ -885,6 +885,37 @@ class Study:
         else:
             raise ValueError(f"No group column defined: self._column_with_group_index: {self._column_with_group_index}")
     
+    def position_sample_within_groups(self, sortby_column, sample_value, position_index) -> None:
+        if self._column_with_group_index:
+            logger.info(f"Positioning sample within {self._column_with_group_index} based on {sortby_column} value {sample_value} at index {position_index}")
+            # Step 1: Group the DataFrame by 'group_ID'
+            grouped = self.specimen_records_df.groupby(self._column_with_group_index)
+
+            # Step 2: Modify each group
+            modified_groups = []
+            for _, group in grouped:
+                # Find the row to reposition
+                sample_row = group[group[sortby_column] == sample_value]
+
+                # Remove this row from the group
+                group = group[group[sortby_column] != sample_value]
+
+                # Split the group at the specified position index
+                first_part = group.iloc[:position_index]
+                second_part = group.iloc[position_index:]
+
+                # Concatenate first part, sample row, and second part
+                modified_group = pd.concat([first_part, sample_row, second_part])
+
+                modified_groups.append(modified_group)
+
+            # Step 3: Concatenate the modified groups back into a single DataFrame
+            self.specimen_records_df = pd.concat(modified_groups).reset_index(drop=True)
+
+        else:
+            raise ValueError(f"No group column defined: self._column_with_group_index: {self._column_with_group_index}")
+
+
     def add_specimens_to_plate(self, study_plate: object, specimen_samples_df: object) -> object:
         
         logger.debug(f"Adding {len(specimen_samples_df)} samples to plate {study_plate.plate_id}")
