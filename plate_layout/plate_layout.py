@@ -85,8 +85,7 @@ class  Plate:
     columns: list 
     wells: list # list of well objects
     layout: object
-    metadata : list # available metadata in wells
-    
+    metadata : list # available metadata in wells    
     
     # "private" variables
     _coordinates: list # list of tuples with a pair of ints (row, column)
@@ -342,7 +341,7 @@ class  Plate:
             self.wells[i].metadata["sample_code"] = self._specimen_code
             self.wells[i].metadata["sample_type"] = self._specimen_base_name
             self.wells[i].metadata["sample_name"] = f"{self._specimen_code}{i+1}"
-            
+   
     @property
     def layout(self):
         return self.to_numpy_array(self.get("sample_name"))
@@ -781,6 +780,8 @@ class Study:
     plate_layout = object
     QC_config_file = str
     plates : list = []
+
+    distribute_samples_equally : bool = False
     
     specimen_records_df : object = pd.DataFrame()
     
@@ -988,7 +989,7 @@ class Study:
             
             plt.savefig(file_path)
     
-    def distribute_samples_to_plates(self, plate_layout, allow_group_split=False):
+    def distribute_samples_to_plates(self, plate_layout, allow_group_split=False, N_samples_desired_plate=None):
         """
         Distributes samples to plates, ensuring that samples in the same group
         are not split across plates unless allow_group_split is True.
@@ -1004,12 +1005,28 @@ class Study:
         # Copy the specimen data to work on
         remaining_specimens = self.specimen_records_df.copy()
 
+        N_specimens = self.specimen_records_df.shape[0]
+
+        if N_samples_desired_plate is None:
+            N_samples_desired_plate = plate_layout._specimen_capacity
+
+        # N_QCsample_in_plate = plate_layout.get_metadata_as_numpy_array("QC").sum()
+        N_plates_estimate = N_specimens / (plate_layout._specimen_capacity)
+
         while not remaining_specimens.empty:
             current_plate = copy.deepcopy(plate_layout)
             current_plate.plate_id = plate_number
 
             # Select specimens for the current plate
-            selected_specimens = remaining_specimens.head(current_plate._specimen_capacity)
+            N_remaining = remaining_specimens.shape[0]
+
+            # if the remaining samples can fit on a whole place we put them there,
+            # otherwise we place the desired number of samples on the plate.
+            # if not we 
+            if N_remaining < current_plate._specimen_capacity:
+                selected_specimens = remaining_specimens.head(current_plate._specimen_capacity)
+            else:
+                selected_specimens = remaining_specimens.head(N_samples_desired_plate)
 
             if not allow_group_split:
                 # Extract unique group IDs from the selected specimens. This step identifies the distinct groups
