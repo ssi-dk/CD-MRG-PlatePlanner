@@ -558,8 +558,8 @@ class  Plate:
             delimiter = ","
             if file_format == "tsv":
                 delimiter = "\t"
-            elif file_format == "xlsx" or "xls":
-                dialect = "excel"
+            elif file_format == "csv" or "csv":
+                dialect = "excel-tab"
             else: 
                 raise RuntimeWarning(file_format)
             
@@ -1011,7 +1011,7 @@ class Study:
             N_samples_desired_plate = plate_layout._specimen_capacity
 
         # N_QCsample_in_plate = plate_layout.get_metadata_as_numpy_array("QC").sum()
-        N_plates_estimate = N_specimens / (plate_layout._specimen_capacity)
+        # N_plates_estimate = N_specimens / (plate_layout._specimen_capacity)
 
         while not remaining_specimens.empty:
             current_plate = copy.deepcopy(plate_layout)
