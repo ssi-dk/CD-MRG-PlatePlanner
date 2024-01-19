@@ -530,8 +530,10 @@ class  Plate:
             
         # FIG PROPERTIES
         # X axis
+        xtick_labels = self.columns
+        xtick_labels = [i+1 for i in xtick_labels]
         ax.set_xticks(x)
-        ax.set_xticklabels(self.columns)
+        ax.set_xticklabels(xtick_labels)
         ax.xaxis.grid(color=grid_color, linestyle='dashed', linewidth=1)
         ax.set_xlim(-1*x.max()*0.05,x.max()*1.05)
 
