@@ -75,19 +75,20 @@ class  Plate:
     _specimen_base_name : str = "Specimen"
     _colormap : str = "tab20" # for plotting using matplotlib
     _NaN_color : tuple = (1, 1, 1)
+    _default_plate_id : int = 1
     _default_n_rows : int = 8
     _default_n_columns : int = 12
     
     
     # "public" variables 
-    plate_id : int
     rows: list 
     columns: list 
     wells: list # list of well objects
-    layout: object
-    metadata : list # available metadata in wells    
+    sample_layout: object
+    metadata_keys : list # available metadata in wells    
     
     # "private" variables
+    _plate_id : int
     _coordinates: list # list of tuples with a pair of ints (row, column)
     _alphanumerical_coordinates: list # list of strings for canonical naming of plate coordnates, i.e A1, A2, A3, ..., B1, B2, etc
     _coordinates2index : dict # map well index to well coordinate
@@ -128,7 +129,6 @@ class  Plate:
         else:
             raise ValueError(f"Unsupported plate format: {plate_dim}. Must be given as a tuple '(#rows, #columns)', list '[#rows, #columns]' or an integer '#wells in total'")
 
-        self.plate_id = plate_id
         self.rows = list(range(0,self._n_rows))
         self.columns = list(range(0,self._n_columns))
         self.capacity = self._n_rows * self._n_columns
@@ -139,11 +139,23 @@ class  Plate:
         
         self.define_empty_wells()
         self.create_plate_layout()
-        
+
+        self.plate_id = plate_id
+
         logger.info(f"Created a plate template with {len(self)} wells:")
         logger.debug(f"Canonical well coordinates:\n{self}")
         #logger.debug(f"Well index coordinates:\n{self.to_numpy_array(self._coordinates)}")
   
+    @property
+    def plate_id(self):
+        return self._plate_id
+
+    @plate_id.setter
+    def plate_id(self, new_id):
+        self._plate_id = new_id
+        for well in self.wells:
+            well.metadata['plate_id'] = new_id
+
             
     @staticmethod    
     def create_index_coordinates(rows, columns) -> list:
@@ -224,7 +236,7 @@ class  Plate:
                 Well(coordinate=index_crd,
                      name=name_crd,
                      index=i, 
-                     plate_id=self.plate_id,
+                     plate_id=self._default_plate_id,
                      color=self._NaN_color)
             )
             
@@ -333,9 +345,7 @@ class  Plate:
         return np.flipud(plate_array)
     
     
-    def create_plate_layout(self):
-        # set metadata for wells that are for specimen samples
-        
+    def create_plate_layout(self):        
         for i in range(0,self.capacity):
             self.wells[i].metadata["QC"] = False
             self.wells[i].metadata["sample_code"] = self._specimen_code
@@ -343,12 +353,21 @@ class  Plate:
             self.wells[i].metadata["sample_name"] = f"{self._specimen_code}{i+1}"
    
     @property
-    def layout(self):
-        return self.to_numpy_array(self.get("sample_name"))
+    def sample_layout(self):
+        return self.to_numpy_array(self.get_metadata("sample_name"))
             
     @property
+    def metadata_keys(self):
+        return ["coordinates", "names"] + list(self._metadata_map.keys())
+    
+    @property
     def metadata(self):
-        return list(self._metadata_map.keys())
+        metadata_dict = {}
+        for md_key in self.metadata_keys:
+            metadata_dict[md_key] = self.get_metadata(md_key)
+
+        return metadata_dict
+
     
     @property
     def _metadata_map(self):
@@ -361,7 +380,7 @@ class  Plate:
         return metadata    
     
     
-    def get(self, metadata_key) -> list:
+    def get_metadata(self, metadata_key) -> list:
         
         if metadata_key == "names": 
             return [well.name for well in self]
@@ -372,13 +391,13 @@ class  Plate:
         
     
     def get_metadata_as_numpy_array(self, metadata_key : str) -> object:
-        metadata = self.get(metadata_key)
+        metadata = self.get_metadata(metadata_key)
         return self.to_numpy_array(metadata)
     
     
     def define_metadata_colors(self, metadata_key : str, colormap : str) -> dict:
         # get number of colors needed == number of (discrete) values represented in wells with metadata_key
-        metadata_categories = np.unique(self.get(metadata_key))  
+        metadata_categories = np.unique(self.get_metadata(metadata_key))  
         
         N_colors = len(metadata_categories)
         
@@ -528,6 +547,13 @@ class  Plate:
         ax.set_title(title_str)
         
         return fig
+    
+    def to_dataframe(self):
+        
+        df = pd.DataFrame(self.metadata)
+        df.columns = self.metadata_keys
+
+        return df
     
         
     def to_file(self, file_path : str = None,
@@ -927,7 +953,7 @@ class Study:
         plate_specimen_count = 0
         
         for i, well in enumerate(study_plate):
-            
+
             if well.metadata["sample_code"] == "S": 
                 # add metadata key (and values) for each column in dataframe
                 for col in columns:
@@ -949,6 +975,13 @@ class Study:
         return study_plate
                 
         # --- END OF FOOR LOOP ---
+    
+    def to_dataframe(self):
+        dfs = []
+        for plate in self:
+            dfs.append(plate.to_dataframe())
+
+        return pd.concat(dfs).reset_index(drop=True)
     
     def to_layout_lists(self, metadata_keys: list = None, 
                         file_format : str = "txt",
