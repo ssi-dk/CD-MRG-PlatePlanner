@@ -632,6 +632,27 @@ class  Plate:
                         to_write += f"{str(well.metadata.get(key,'NaN')):<{width}}"
                 
                     file.write(to_write+"\n")
+
+    def add_metadata(self, key, values):
+        """
+        Add or update metadata for all wells in the plate. If a list of values is provided,
+        assign each value to the corresponding well. If a single value is provided, assign it to all wells.
+
+        Parameters:
+        key (str): The metadata key to add or update.
+        values: A single value or a list of values to set for the given metadata key. 
+        """
+        if isinstance(values, list):
+            # Case when values is a list
+            if len(values) != len(self.wells):
+                raise ValueError("The length of values list does not match the number of wells")
+
+            for well, value in zip(self.wells, values):
+                well.metadata[key] = value
+        else:
+            # Case when a single value is provided
+            for well in self.wells:
+                well.metadata[key] = values
         
         
         
