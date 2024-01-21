@@ -40,8 +40,8 @@ nav:
     - Studies: study.md
   - Glossary: glossary.md
 
-repo_url: 'https://github.com/ssi-dk/CD-MRG-plate_layout/'
-repo_name: ssi-dk/CD-MRG-plate_layout
+repo_url: 'https://github.com/ssi-dk/CD-MRG-PlatePlanner/'
+repo_name: ssi-dk/CD-MRG-PlatePlanner
 copyright: Copyright &copy; 2024 Filip (Persson) Ljung
 
 plugins:
