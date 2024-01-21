@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "plate-layout"
+name = "plate-planner"
 description = 'A tool to create and visualize sample layouts for multiwell plates.'
 readme = "README.md"
 requires-python = ">=3.9"
@@ -37,11 +37,11 @@ dynamic = ["version"]
 Source = "https://github.com/ssi-dk/CD-MRG-PlatePlanner"
 
 # add entry point for CLI 
-[project.scripts]
-plate-layout = "plate_layout.cli:main"
+#[project.scripts]
+#plate-layout = "plate_layout.cli:main"
 
 [tool.hatch.version]
-path = "plate_layout/__about__.py"
+path = "src/__about__.py"
 
 [tool.hatch.envs.default]
 dependencies = [
@@ -49,7 +49,7 @@ dependencies = [
   "pytest-cov",
 ]
 [tool.hatch.envs.default.scripts]
-cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=plate_layout --cov=tests {args}"
+cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=src --cov=tests {args}"
 no-cov = "cov --no-cov {args}"
 
 [[tool.hatch.envs.test.matrix]]
@@ -59,7 +59,7 @@ python = ["39", "310", "311"]
 branch = true
 parallel = true
 omit = [
-  "plate_layout/__about__.py",
+  "src/__about__.py",
 ]
 
 [tool.coverage.report]

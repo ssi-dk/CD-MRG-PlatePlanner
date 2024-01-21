@@ -27,7 +27,7 @@ pip install plate-layout
 
 ## Documentation
 
-For more detailed documentation, visit [PlatePlanner Documentation](https://ssi-dk.github.io/CD-MRG-plate_layout/).
+For more detailed documentation, visit [PlatePlanner Documentation](https://ssi-dk.github.io/CD-MRG-PlatePlanner/).
 
 ## Quick Start Guide
 
