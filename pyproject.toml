@@ -34,7 +34,7 @@ dynamic = ["version"]
 [project.urls]
 #Documentation = "https://github.com/unknown/plate-layout#readme"
 #Issues = "https://github.com/unknown/plate-layout/issues"
-Source = "https://github.com/ssi-dk/CD-MRG-plate_layout"
+Source = "https://github.com/ssi-dk/CD-MRG-PlatePlanner"
 
 # add entry point for CLI 
 [project.scripts]
