@@ -2,13 +2,47 @@ site_name: ''
 theme:
   name: material
   logo: assets/logo.png
-  repo_url: 'https://github.com/ssi-dk/CD-MRG-plate_layout/'
-  repo_name: 'GitHub'
+  features:
+    - content.code.copy
+    #- navigation.footer
   icon:
     repo: fontawesome/brands/github
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: custom_light
+      primary: white
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
 nav:
   - Home: index.md
-  - API Reference: api_reference.md
+  - Usage: usage.md
+  - API documentation:
+    - Plates: plate.md
+    - QC config file: qc_configfile.md
+    - Studies: study.md
+  - Glossary: glossary.md
+
+repo_url: 'https://github.com/ssi-dk/CD-MRG-plate_layout/'
+repo_name: ssi-dk/CD-MRG-plate_layout
+copyright: Copyright &copy; 2024 Filip (Persson) Ljung
 
 plugins:
   - search
@@ -16,11 +50,17 @@ plugins:
       default_handler: python
       handlers:
         python:
-          rendering:
-            show_source: true
-          selection:
-            docstring_style: google
+          paths: [src]
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
   - admonition
   - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets

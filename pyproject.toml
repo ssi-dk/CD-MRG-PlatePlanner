@@ -68,9 +68,3 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
-
-# [publish.index.repos.test]
-# url = "https://test.pypi.org/legacy/"
-# user = "__token__"
-# auth = "pypi-<SECRET>"
-# ca-cert = "/path/to/ca-bundle.crt"
