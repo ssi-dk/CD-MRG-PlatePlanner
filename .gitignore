@@ -1,5 +1,7 @@
 data/batch*
-output/
+layout_figures/
+layout_lists/
+site/
 
 plate_layout/__pycache__
 tests/__pycache__

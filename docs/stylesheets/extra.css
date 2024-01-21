@@ -1,0 +1,11 @@
+[data-md-color-scheme="slate"] {
+    --md-hue: 210; 
+  }
+
+.md-nav__item .md-nav__link--active, .md-nav__item .md-nav__link--active code {
+    color: #996CFF !important;
+}
+
+:root {
+--md-accent-fg-color: #11d57bff !important;
+}

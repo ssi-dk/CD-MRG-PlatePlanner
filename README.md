@@ -1,55 +1,83 @@
-# plate_layout
 
 [![PyPI - Version](https://img.shields.io/pypi/v/plate-layout.svg)](https://pypi.org/project/plate-layout)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/plate-layout.svg)](https://pypi.org/project/plate-layout)
 
 -----
 
-**Table of Contents**
+![Alt text](docs/assets/logo.webp "PlatePlannerLogo")
 
-- [Installation](#installation)
-- [License](#license)
-- [Example](#example)
+PlatePlanner is a Python package designed to simplify plate layout creation for LC-MS studies, and is also applicable for various laboratory applications where sample distribution to plates is required, with or without QC sample patterns. Its user-friendly API supports dynamic QC sample patterns, easy creation of run lists, and plate visualizations.
+
+## Key Features
+
+- **Dynamic QC Sample Patterns**: Create plate layouts with customizable QC sample patterns.
+- **Flexible Sample Distribution**: Distribute samples within groups across plates, accommodating variable numbers of samples per group.
+- **Non-Split/Split Group Handling**: Control over distributing samples within groups without splitting them over plates or splitting when necessary.
+- **Customizable Run Lists & Plate Visualizations**: Generate run lists and visualize plate assignments.
+- **Block Randomization**: Utilize block randomization to prevent run order bias.
+- **Stratified Randomization (Upcoming)**: This feature, once implemented, will ensure balanced distribution of group attributes across LC-MS plates or batches.
 
 ## Installation
+
+To install PlatePlanner, simply run:
 
 ```console
 pip install plate-layout
 ```
 
-## License
+## Documentation
 
-`plate-layout` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
+For more detailed documentation, visit [PlatePlanner Documentation](https://ssi-dk.github.io/CD-MRG-plate_layout/).
 
-### TODO
-- Add python script and a main function for CLI usage ...
+## Quick Start Guide
 
-## Example
+Here's a quick example of how to use PlatePlanner:
 
-### Defining the plate type and quality control setup
-The plate dimensions and (optional) quality control layouts are are defined in a toml file; see `plate_config.toml' in the config folder for an example. 
+```py
+from plate_layout import Study, QCPlate
 
+# Create a study and load your file with sample records (csv, xls/xlsx)
+study = Study(name="cancer")
+study.load_specimen_records(
+    records_file="./data/study_samples.csv",
+    sample_group_id_column="pair_ID",
+    sample_id_column="specimen_ID"
+)
 
-```python
+# Block randomize groups
+study.randomize_order(case_control=True, reproducible=False)
 
-import plate_layout as pl
-import pandas as pd
-import numpy as np
-import logging
+# Distribute samples to a 96-well plate with QC samples as defined in the toml file
+qc_plate = QCPlate(plate_dim=(8, 12), QC_config="./data/plate_config_dynamic.toml")
+study.distribute_samples_to_plates(plate_layout=qc_plate)
 
-pl.logger.setLevel(logging.INFO)
+# Create visualization for plate 3
+fig = study[3].as_figure(
+    color_metadata_key="organ",
+    annotation_metadata_key="object",
+    rotation=45,
+    fontsize=8
+)
+
+fig = study[3].to_layout_figures(
+    annotation_metadata_key="sample_name",
+    color_metadata_key="sample_code",
+    file_format="png"
+)
 ```
 
-### Create a plate layout 
-Create plate design by specifying the path to a config file directly when instantiating the class, 
+## Visualization Examples
+Here are some examples of plate visualizations created using PlatePlanner:
+
+![Alt text](docs/assets/cancer_Plate_7_object_organ.png "plate visualization example")
+
+![Alt text](docs/assets/cancer_Plate_7_sample_name_sample_code.png "plate visualization example")
+
+## Contributing
+
+We welcome contributions to PlatePlanner! Please read our Contributing Guidelines for more information on how to get involved.
+
+## License
+PlatePlanner is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
 
 
-### Load study data and randomize order 
-
-### Batches - distributing samples on plates
-
-
-### Export batch lists to file
-You can export batch lists using the `to_file` method and specify desired file format and which columns to export. 
-
-### Plot plate layouts

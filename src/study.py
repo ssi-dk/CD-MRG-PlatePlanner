@@ -6,7 +6,7 @@ from typing import Union, Iterator, Any
 import pandas as pd
 import numpy as np
 
-from src.plateplanner.plate import Plate, QCPlate
+from src.plate import Plate, QCPlate
 from src.logger import logger
 
 class Study:
@@ -26,12 +26,14 @@ class Study:
         _column_with_group_index (str): Column name in specimen_records_df that holds group indices.
 
     Examples:
-        >>> study = Study(study_name="Cancer Research")
+        >>> study = Study(study_name="Cancer")
         >>> study.load_specimen_records("specimens.csv", sample_group_id_column="GroupID")
         >>> study.randomize_order(case_control=True)
 
         >>> qc_plate = QCPlate(QC_config="./data/plate_config_dynamic.toml")
+        >>> study.randomize_order()
         >>> study.distribute_samples_to_plates()
+        >>> study.to_layout_lists()
     """
 
 
@@ -157,7 +159,7 @@ class Study:
         """
         return self.plates[index]
         
-    def load_specimen_records(self, records_file: str, sample_group_id_column=None) -> None:
+    def load_specimen_records(self, records_file: str, sample_group_id_column=None, sample_id_column=None) -> None:
         """
         Loads specimen records from a specified file into the study.
 
@@ -207,10 +209,14 @@ class Study:
         logger.info("Metadata in file:")
         for col in records.columns:
             logger.info(f"\t{col}")
+
+        if sample_id_column:
+            logger.debug(f"Sorting records in ascending order based on column '{sample_id_column}'")
+            records = records.sort_values(by=[sample_id_column])
             
-        if self._column_with_group_index:
-            logger.debug(f"Sorting records in ascending order based on column '{self._column_with_group_index}'")
-            records = records.sort_values(by=[self._column_with_group_index])
+        # if self._column_with_group_index:
+        #     logger.debug(f"Sorting records in ascending order based on column '{self._column_with_group_index}'")
+            # records = records.sort_values(by=[self._column_with_group_index])
         
         self.specimen_records_df = records
 

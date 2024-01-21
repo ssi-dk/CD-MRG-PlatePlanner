@@ -2,8 +2,9 @@ site_name: ''
 theme:
   name: material
   logo: assets/logo.png
-  repo_url: 'https://github.com/ssi-dk/CD-MRG-plate_layout/'
-  repo_name: 'GitHub'
+  features:
+    - content.code.copy
+    #- navigation.footer
   icon:
     repo: fontawesome/brands/github
   palette:
@@ -17,7 +18,7 @@ theme:
     - media: "(prefers-color-scheme: light)"
       scheme: custom_light
       primary: white
-      accent: green
+      accent: custom
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
@@ -25,15 +26,23 @@ theme:
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: white
-      accent: lime
+      primary: black
+      accent: custom
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
 nav:
   - Home: index.md
-  - Plates: plate.md
-  - Studies: study.md
+  - Usage: usage.md
+  - API documentation:
+    - Plates: plate.md
+    - QC config file: qc_configfile.md
+    - Studies: study.md
+  - Glossary: glossary.md
+
+repo_url: 'https://github.com/ssi-dk/CD-MRG-plate_layout/'
+repo_name: ssi-dk/CD-MRG-plate_layout
+copyright: Copyright &copy; 2024 Filip (Persson) Ljung
 
 plugins:
   - search
@@ -43,6 +52,15 @@ plugins:
         python:
           paths: [src]
 
+extra_css:
+  - stylesheets/extra.css
+
 markdown_extensions:
   - admonition
   - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
