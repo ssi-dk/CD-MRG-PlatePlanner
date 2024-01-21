@@ -6,8 +6,8 @@ from typing import Union, Iterator, Any
 import pandas as pd
 import numpy as np
 
-from plate_layout.plate import Plate, QCPlate
-from plate_layout.logger import logger
+from src.plateplanner.plate import Plate, QCPlate
+from src.logger import logger
 
 class Study:
     """
@@ -29,7 +29,9 @@ class Study:
         >>> study = Study(study_name="Cancer Research")
         >>> study.load_specimen_records("specimens.csv", sample_group_id_column="GroupID")
         >>> study.randomize_order(case_control=True)
-        >>> study.distribute_samples_to_plates(Plate(...))
+
+        >>> qc_plate = QCPlate(QC_config="./data/plate_config_dynamic.toml")
+        >>> study.distribute_samples_to_plates()
     """
 
 

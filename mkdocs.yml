@@ -15,7 +15,9 @@ theme:
 
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
-      scheme: default 
+      scheme: custom_light
+      primary: white
+      accent: green
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
@@ -23,12 +25,15 @@ theme:
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
+      primary: white
+      accent: lime
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
 nav:
   - Home: index.md
-  - API Reference: api_reference.md
+  - Plates: plate.md
+  - Studies: study.md
 
 plugins:
   - search
@@ -36,10 +41,7 @@ plugins:
       default_handler: python
       handlers:
         python:
-          rendering:
-            show_source: true
-          selection:
-            docstring_style: google
+          paths: [src]
 
 markdown_extensions:
   - admonition

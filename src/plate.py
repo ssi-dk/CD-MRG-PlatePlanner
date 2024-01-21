@@ -16,8 +16,8 @@ import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 from matplotlib.patches import FancyBboxPatch
 
-#from pl_logger import logger
-from plate_layout.logger import logger
+
+from src.logger import logger
 
 
 # parameters governing how numpy arrays are printed to console
