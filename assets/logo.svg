@@ -69,11 +69,11 @@
        style="font-size:53.3333px;white-space:pre;shape-inside:url(#rect1);display:inline;fill:#6bad39;fill-opacity:1"><tspan
          x="108.91016"
          y="463.80603"
-         id="tspan6"><tspan
+         id="tspan4"><tspan
            style="fill:#4d4d4d"
-           id="tspan2">PLATE</tspan><tspan
+           id="tspan1">PLATE</tspan><tspan
            style="fill:#11d57b"
-           id="tspan5">PLA</tspan></tspan></text>
+           id="tspan3">PLA</tspan></tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:14.1111px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans';fill:#11d57b;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.705556;stroke-dasharray:none;stroke-opacity:1"
@@ -280,7 +280,7 @@
     </g>
     <g
        id="g1"
-       style="opacity:0.51504425">
+       style="opacity:0.515044">
       <circle
          style="fill:#e4e4e4;fill-opacity:1;stroke:none;stroke-width:0.238612;stroke-dasharray:none;stroke-opacity:1"
          id="circle15-8-0"
