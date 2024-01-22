@@ -1,6 +1,6 @@
 
-<!-- [![PyPI - Version](https://img.shields.io/pypi/v/plate-layout.svg)](https://pypi.org/project/plate-layout) -->
-<!-- [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/plate-layout.svg)](https://pypi.org/project/plate-layout) -->
+[![PyPI - Version](https://img.shields.io/pypi/v/plate-planner.svg)](https://pypi.org/project/plate-planner)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/plate-planner.svg)](https://pypi.org/project/plate-planner)
 
 -----
 
