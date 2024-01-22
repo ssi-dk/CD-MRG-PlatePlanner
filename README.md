@@ -1,7 +1,7 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/plate-planner.svg)](https://pypi.org/project/plate-planner)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/plate-planner.svg)](https://pypi.org/project/plate-planner)
-
+[![pages-build-deployment](https://github.com/ssi-dk/CD-MRG-PlatePlanner/actions/workflows/pages/pages-build-deployment/badge.svg?branch=main)](https://github.com/ssi-dk/CD-MRG-PlatePlanner/actions/workflows/pages/pages-build-deployment)
 -----
 
 <img src="docs/assets/logo.png" alt="PlatePlannerLogo" title="PlatePlannerLogo" width="200"/>
