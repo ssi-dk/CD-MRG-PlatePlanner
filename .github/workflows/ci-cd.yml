@@ -2,7 +2,7 @@
 on:
   release:
     types: [created]
-    
+
 jobs:
   pypi-publish:
     name: upload release to PyPI
@@ -13,7 +13,8 @@ jobs:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
     steps:
-      # retrieve your distributions here
+      - name: Check out code # let the GitHub Actions runner have access to repository files,
+        uses: actions/checkout@v2
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
