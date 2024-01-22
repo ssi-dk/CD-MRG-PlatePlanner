@@ -2,11 +2,12 @@ site_name: ''
 theme:
   name: material
   logo: assets/logo.png
+  favicon: assets/favicon_2.png
   features:
     - content.code.copy
     #- navigation.footer
   icon:
-    repo: fontawesome/brands/github
+    repo: fontawesome/brands/github-alt
   palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"
@@ -20,7 +21,7 @@ theme:
       primary: white
       accent: custom
       toggle:
-        icon: material/brightness-7
+        icon: material/weather-sunny
         name: Switch to dark mode
 
     # Palette toggle for dark mode
@@ -29,7 +30,7 @@ theme:
       primary: black
       accent: custom
       toggle:
-        icon: material/brightness-4
+        icon: material/weather-night
         name: Switch to system preference
 nav:
   - Home: index.md

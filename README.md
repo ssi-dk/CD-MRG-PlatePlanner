@@ -6,9 +6,6 @@
 
 ![Alt text](docs/assets/logo.webp "PlatePlannerLogo")
 
-PlatePlanner is a Python package designed to simplify plate layout creation for LC-MS studies, and is also applicable for various laboratory applications where sample distribution to plates is required, with or without QC sample patterns. Its user-friendly API supports dynamic QC sample patterns, easy creation of run lists, and plate visualizations.
-
-## Key Features
 
 - **Dynamic QC Sample Patterns**: Create plate layouts with customizable QC sample patterns.
 - **Flexible Sample Distribution**: Distribute samples within groups across plates, accommodating variable numbers of samples per group.
