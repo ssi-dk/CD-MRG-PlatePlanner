@@ -19,7 +19,7 @@
 To install PlatePlanner, simply run:
 
 ```console
-pip install ...
+pip install plate-planner
 ```
 
 ## Documentation
