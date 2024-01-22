@@ -4,7 +4,7 @@
 
 -----
 
-![Alt text](docs/assets/logo.webp "PlatePlannerLogo")
+![Alt text](docs/assets/logo.png "PlatePlannerLogo")
 
 
 - **Dynamic QC Sample Patterns**: Create plate layouts with customizable QC sample patterns.
