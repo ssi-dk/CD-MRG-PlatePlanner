@@ -4,7 +4,7 @@
 
 -----
 
-![Alt text](docs/assets/logo.png "PlatePlannerLogo")
+<img src="docs/assets/logo.png" alt="PlatePlannerLogo" title="PlatePlannerLogo" width="200"/>
 
 
 - **Dynamic QC Sample Patterns**: Create plate layouts with customizable QC sample patterns.
