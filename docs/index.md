@@ -12,7 +12,7 @@ PlatePlanner is a Python package designed to simplify plate layout creation for 
 ## Installation
 
 ```
-pip install plate_layout
+pip install plate-planner
 ```
 
 ## Example
