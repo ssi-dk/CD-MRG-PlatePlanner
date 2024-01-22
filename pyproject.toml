@@ -32,7 +32,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.urls]
-#Documentation = "https://github.com/unknown/plate-layout#readme"
+Documentation = "https://ssi-dk.github.io/CD-MRG-PlatePlanner/"
 #Issues = "https://github.com/unknown/plate-layout/issues"
 Source = "https://github.com/ssi-dk/CD-MRG-PlatePlanner"
 
@@ -43,28 +43,32 @@ Source = "https://github.com/ssi-dk/CD-MRG-PlatePlanner"
 [tool.hatch.version]
 path = "src/__about__.py"
 
-[tool.hatch.envs.default]
-dependencies = [
-  "pytest",
-  "pytest-cov",
-]
-[tool.hatch.envs.default.scripts]
-cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=src --cov=tests {args}"
-no-cov = "cov --no-cov {args}"
+[tool.hatch.build.targets.wheel]
+packages = ["dist/"]
 
-[[tool.hatch.envs.test.matrix]]
-python = ["39", "310", "311"]
 
-[tool.coverage.run]
-branch = true
-parallel = true
-omit = [
-  "src/__about__.py",
-]
+# [tool.hatch.envs.default]
+# dependencies = [
+#   "pytest",
+#   "pytest-cov",
+# ]
+# [tool.hatch.envs.default.scripts]
+# cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=src --cov=tests {args}"
+# no-cov = "cov --no-cov {args}"
 
-[tool.coverage.report]
-exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
-]
+# [[tool.hatch.envs.test.matrix]]
+# python = ["39", "310", "311"]
+
+# [tool.coverage.run]
+# branch = true
+# parallel = true
+# omit = [
+#   "src/__about__.py",
+# ]
+
+# [tool.coverage.report]
+# exclude_lines = [
+#   "no cov",
+#   "if __name__ == .__main__.:",
+#   "if TYPE_CHECKING:",
+# ]
