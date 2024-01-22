@@ -17,7 +17,7 @@ import matplotlib.cm as cm
 from matplotlib.patches import FancyBboxPatch
 
 
-from src.logger import logger
+from plate_planner.logger import logger
 
 
 # parameters governing how numpy arrays are printed to console

@@ -41,10 +41,10 @@ Source = "https://github.com/ssi-dk/CD-MRG-PlatePlanner"
 #plate-layout = "plate_layout.cli:main"
 
 [tool.hatch.version]
-path = "src/__about__.py"
+path = "src/plate_planner/__about__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["dist/"]
+packages = ["src/plate_planner"]
 
 
 # [tool.hatch.envs.default]

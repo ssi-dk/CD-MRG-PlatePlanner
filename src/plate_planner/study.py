@@ -6,8 +6,8 @@ from typing import Union, Iterator, Any
 import pandas as pd
 import numpy as np
 
-from src.plate import Plate, QCPlate
-from src.logger import logger
+from plate_planner.plate import Plate, QCPlate
+from plate_planner.logger import logger
 
 class Study:
     """
