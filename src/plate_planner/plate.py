@@ -615,8 +615,9 @@ class Plate:
         # Legends
         if color_metadata_key:
             # Get unique categories and their corresponding colors
+            legend_marker_size = np.sqrt(well_size) * 0.5
             unique_categories = set(self.get_metadata(color_metadata_key))
-            legend_handles = [plt.Line2D([0], [0], marker='o', color=self._metadata_color_map.get(category, self._default_well_color), alpha=alpha, label=category, markersize=20, linestyle='None') 
+            legend_handles = [plt.Line2D([0], [0], marker='o', color=self._metadata_color_map.get(category, self._default_well_color), alpha=alpha, label=category, markersize=legend_marker_size, linestyle='None') 
                             for category in unique_categories]
             
             ax.legend(handles=legend_handles, bbox_to_anchor=legend_bb, loc='lower center', frameon=False, labelspacing=1, ncol=legend_n_columns)
