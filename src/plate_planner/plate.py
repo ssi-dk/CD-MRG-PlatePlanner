@@ -48,6 +48,7 @@ class Well:
     plate_id: int = 1
     coordinate: Tuple[int, int] = field(default_factory=lambda: (0, 0))
     index: int = None
+    empty: bool = True
     rgb_color: Tuple[float, float, float] = field(default_factory=lambda: (1, 1, 1))
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -273,20 +274,28 @@ class Plate:
         # Update the name-to-index mapping
         self._name_to_index_map[name] = index
 
-    def _parse_plate_dimensions(self, plate_dim : Union[Tuple[int, int], List[int], Dict[str, int], int]):
+    
+
+    def _parse_plate_dimensions(self, plate_dim: Union[Tuple[int, int], List[int], Dict[str, int], int]):
         """
-        Parse the dimensions of the plate and return the number of rows and columns.
+        Parse the dimensions of the plate and return the number of rows and columns. This method can handle various 
+        formats for specifying the dimensions: as a tuple or list (rows, columns), as a dictionary with 'rows' and 
+        'columns' keys, or as an integer representing the total number of wells in a plate. For integer inputs, 
+        the method attempts to design a plate with a 2:3 aspect ratio (height to width).
 
         Parameters:
-            plate_dim (tuple, list, dict, or int): The dimensions of the plate. This can be a tuple or list 
-                specifying (rows, columns), a dictionary with 'rows' and 'columns' keys, or an integer specifying 
-                the total number of wells in a 2:3 format (e.g., 96 wells as 8x12).
+            plate_dim (tuple, list, dict, or int): The dimensions of the plate. This can be a tuple or list specifying 
+                (rows, columns), a dictionary with 'rows' and 'columns' keys, or an integer specifying the total number 
+                of wells, which the method will attempt to fit into a plate with a 2:3 aspect ratio.
 
         Returns:
-            tuple: A tuple containing the number of rows and columns (rows, columns).
+            tuple: A tuple containing the number of rows and columns (rows, columns). The method ensures that the 
+                resulting plate size can accommodate at least the specified number of wells while trying to maintain 
+                the aspect ratio as close to 2:3 as possible.
 
         Raises:
-            ValueError: If the plate_dim format is unsupported or incorrect.
+            ValueError: If the plate_dim format is unsupported or incorrect, or if the number of wells specified by 
+                an integer cannot be reasonably fitted into a 2:3 aspect ratio plate.
         """
         if plate_dim is None:
             return self._default_n_rows, self._default_n_columns
@@ -301,10 +310,27 @@ class Plate:
             return plate_dim.get("rows", self._default_n_rows), plate_dim.get("columns", self._default_n_columns)
 
         if isinstance(plate_dim, int):
-            # design a plate in format 2 : 3 as in 
-            # 6, 12, 24, 48, 96, 384 or 1536 plates  
-            x = np.sqrt(plate_dim * 25 / 6)
-            return int(np.round(2/5*x)), int(np.round(3/5*x))
+            # Calculate the ideal dimensions for a plate with a 2:3 aspect ratio
+            aspect_ratio_width = 3
+            aspect_ratio_height = 2
+
+            ideal_height = np.sqrt(plate_dim / (aspect_ratio_width * aspect_ratio_height / aspect_ratio_height**2))
+            ideal_width = (aspect_ratio_width / aspect_ratio_height) * ideal_height
+
+            # Round the dimensions and adjust if necessary to accommodate all elements
+            rows = int(np.round(ideal_height))
+            columns = int(np.round(ideal_width))
+
+            while rows * columns < plate_dim:
+                if (rows + 1) * columns <= plate_dim:
+                    rows += 1
+                elif rows * (columns + 1) <= plate_dim:
+                    columns += 1
+                else:
+                    rows += 1
+                    columns += 1
+
+            return rows, columns
 
         raise ValueError("Unsupported plate format: Must be a tuple, list, dict, or integer.")
 
@@ -386,15 +412,22 @@ class Plate:
         metadata = self.get_metadata(metadata_key)
         return self._to_numpy_array(metadata)
     
+    def _is_qualitative_colormap(self, colormap_name):
+        """Check if a given colormap is qualitative."""
+        # This list can be expanded with more qualitative colormaps
+        qualitative_colormaps = ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 
+                                'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c']
+        return colormap_name in qualitative_colormaps
+    
     def assign_well_color(self, metadata_key: Optional[str], colormap: str) -> None:
         """
         Assign colors to each well in the plate based on the specified metadata key and colormap.
-
+        
         Parameters:
             metadata_key (str, optional): The metadata key to use for coloring the wells. 
                 If None, a default color is assigned to each well.
         colormap (str): The name of the colormap to use for coloring the wells.
-
+        
         Raises:
             ValueError: If the metadata_key is invalid or not found.
         """
@@ -406,17 +439,29 @@ class Plate:
         if metadata_key is not None:
             
             metadata_values = self.get_metadata(metadata_key)
-            unique_values = set(metadata_values)
+            unique_values = list(set(metadata_values))
             
             cmap = plt.get_cmap(colormap)
-            color_norm = mcolors.Normalize(vmin=0, vmax=len(unique_values) - 1)
-            scalar_map = cm.ScalarMappable(norm=color_norm, cmap=cmap)
 
-            for i, value in enumerate(unique_values):
-                if value is None or value == "NaN":
-                    self._metadata_color_map[value] = self._default_well_color
-                else:
-                    self._metadata_color_map[value] = scalar_map.to_rgba(i)[0:3]  # RGB color
+            if self._is_qualitative_colormap(colormap):
+                # Use colors directly for qualitative colormaps
+                colors = cmap.colors
+                for i, value in enumerate(unique_values):
+                    if value is None or value == "NaN":
+                        self._metadata_color_map[value] = self._default_well_color
+                    else:
+                        color_index = i % len(colors)
+                        self._metadata_color_map[value] = colors[color_index][0:3]  # RGB color
+            else:
+                # Use scaling for non-qualitative colormaps
+                color_norm = mcolors.Normalize(vmin=0, vmax=len(unique_values) - 1)
+                scalar_map = cm.ScalarMappable(norm=color_norm, cmap=cmap)
+
+                for i, value in enumerate(unique_values):
+                    if value is None or value == "NaN":
+                        self._metadata_color_map[value] = self._default_well_color
+                    else:
+                        self._metadata_color_map[value] = scalar_map.to_rgba(i)[0:3]  # RGB color
 
             for well in self.wells:
                 metadata_value = well.get_attribute_or_metadata(metadata_key)
@@ -478,6 +523,7 @@ class Plate:
                   rotation=0,
                   step=10,
                   title_str=None,
+                  title_fontsize=14,
                   alpha=0.7,
                   well_size=1200,
                   fig_width=11.69,
@@ -488,7 +534,9 @@ class Plate:
                   edge_color=(0.5, 0.5, 0.5),
                   legend_bb=(0.15, -0.15, 0.7, 1.3),
                   legend_n_columns=6,
-                  colormap=None):
+                  colormap=None,
+                  show_grid=True,
+                  ):
         """
         Create a visual representation of the plate using matplotlib.
 
@@ -502,6 +550,7 @@ class Plate:
             rotation (int, optional): Rotation angle for annotations. Default is 0.
             step (int, optional): Step size between wells in the grid. Default is 10.
             title_str (str, optional): Title of the figure. If None, a default title is used.
+            title_fontsize (str, optional): Font size for title.
             alpha (float, optional): Alpha value for well colors. Default is 0.7.
             well_size (int, optional): Size of the wells in the figure. Default is 1200.
             fig_width (float, optional): Width of the figure. Default is 11.69.
@@ -513,6 +562,7 @@ class Plate:
             legend_bb (tuple, optional): Bounding box for the legend. Default is (0.15, -0.15, 0.7, 1.3).
             legend_n_columns (int, optional): Number of columns in the legend. Default is 6.
             colormap (str, optional): Colormap name for coloring wells. Uses default colormap if None.
+            show_grid (bool, optional): If True, displays a grid anchored at the well centers; default is True.
 
         Returns:
             matplotlib.figure.Figure: A figure object representing the plate.
@@ -528,7 +578,6 @@ class Plate:
         if annotation_metadata_key and not self.is_valid_metadata_key(annotation_metadata_key):
             raise ValueError(f"Invalid annotation_metadata_key: {annotation_metadata_key}")
 
-
         # Define title
         if not title_str:
             title_str = f"Plate {self.plate_id}"
@@ -537,7 +586,6 @@ class Plate:
 
         # Assign colors to wells
         self.assign_well_color(color_metadata_key, colormap)
-
 
         # Prepare grid and data for plotting
         minX, maxX, minY, maxY = 0, len(self._columns)*step, 0, len(self._rows)*step
@@ -562,13 +610,13 @@ class Plate:
                 x_i = Xgrid[well.coordinate]
                 y_i = Ygrid[well.coordinate]
                 annotation_label = well.get_attribute_or_metadata(annotation_metadata_key)
-                ax.annotate(annotation_label, (x_i, y_i), ha='center', va='center', rotation=rotation, fontsize=fontsize)
+                ax.annotate(annotation_label, (x_i, y_i), ha='center', va='center', rotation=rotation, fontsize=fontsize, bbox=dict(facecolor='white', alpha=0.5, boxstyle="round,pad=0.25,rounding_size=0.5"))
 
         # Legends
         if color_metadata_key:
             # Get unique categories and their corresponding colors
             unique_categories = set(self.get_metadata(color_metadata_key))
-            legend_handles = [plt.Line2D([0], [0], marker='o', color=self._metadata_color_map.get(category, self._default_well_color), label=category, markersize=10, linestyle='None') 
+            legend_handles = [plt.Line2D([0], [0], marker='o', color=self._metadata_color_map.get(category, self._default_well_color), alpha=alpha, label=category, markersize=20, linestyle='None') 
                             for category in unique_categories]
             
             ax.legend(handles=legend_handles, bbox_to_anchor=legend_bb, loc='lower center', frameon=False, labelspacing=1, ncol=legend_n_columns)
@@ -590,8 +638,13 @@ class Plate:
         ax.set_yticklabels(self.row_labels[::-1])
 
         # Grid settings
-        ax.xaxis.grid(color=grid_color, linestyle='dashed', linewidth=1)
-        ax.yaxis.grid(color=grid_color, linestyle='dashed', linewidth=1)
+        if show_grid:
+            ax.xaxis.grid(color=grid_color, linestyle='dashed', linewidth=1)
+            ax.yaxis.grid(color=grid_color, linestyle='dashed', linewidth=1)
+        else:
+            ax.xaxis.grid(color=grid_color, linestyle='none',)
+            ax.yaxis.grid(color=grid_color, linestyle='none',)
+
         
         ax.set_xlim(minX - maxX*0.08, maxX - maxX*0.035)
         ax.set_ylim(minY - maxY*0.07, maxY - maxY*0.02)
@@ -607,8 +660,10 @@ class Plate:
         for tick in (*xticks, *yticks):
                 tick.set_pad(TICK_PADDING)
                 
-        ax.set_axisbelow(True)
-        ax.set_title(title_str)
+        # ax.set_axisbelow(False)
+                # fig.subplots_adjust(left=0.15, right=0.95, top=0.85, bottom=0.15)
+        ax.set_title(title_str, fontsize=title_fontsize)
+       
 
         # Set the position and size of the rounded rectangle
         x = minX- maxX*0.03  # X-coordinate of the lower-left corner
@@ -803,6 +858,18 @@ class Plate:
         return [f"{row_labels[row]}{col+1}" for row, col in itertools.product(rows, columns)]
     
 
+class SamplePlate(Plate):
+    _default_sample_code : str = "S"
+    _default_sample_name : str = "Specimen"
+
+    def __init__(self, plate_dim: Tuple[int, int] | List[int] | Dict[str, int] | int = None, plate_id: int = 1):
+        super().__init__(plate_dim, plate_id)
+
+        for well in self.wells:
+            well.metadata["sample_code"] = self._default_sample_code
+            well.metadata["sample_name"] = self._default_sample_name
+
+    
 # A plate with QC samples is a subclass of a Plate class
 class QCPlate(Plate):
     """_summary_

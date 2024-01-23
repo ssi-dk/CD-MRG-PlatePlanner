@@ -352,6 +352,8 @@ class Study:
                 # add metadata key and nan value for each column in dataframe
                 for col in columns:
                     well.metadata[col] = "NaN"
+
+                well.empty = False
                     
             study_plate[i] = well
             
