@@ -70,6 +70,7 @@ class Study:
             study_name = f"Study_{datetime.date}"
             
         self.name = study_name
+        self.plates = []
         
     def __iter__(self) -> Iterator[Union[Plate, QCPlate]]:
         """
