@@ -7,7 +7,6 @@ from pathlib import Path
 
 from typing import Tuple, Union, Optional, Dict, Any, List
 
-
 import numpy as np
 import pandas as pd
 
@@ -16,9 +15,7 @@ import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 from matplotlib.patches import FancyBboxPatch
 
-
 from plate_planner.logger import logger
-
 
 # parameters governing how numpy arrays are printed to console
 np.set_printoptions(threshold=np.inf)
@@ -274,8 +271,6 @@ class Plate:
         # Update the name-to-index mapping
         self._name_to_index_map[name] = index
 
-    
-
     def _parse_plate_dimensions(self, plate_dim: Union[Tuple[int, int], List[int], Dict[str, int], int]):
         """
         Parse the dimensions of the plate and return the number of rows and columns. This method can handle various 
@@ -529,12 +524,12 @@ class Plate:
                   fig_width=11.69,
                   fig_height=8.27,
                   dpi=100,
-                  plt_style="bmh",
+                  plt_style="fivethirtyeight",
                   grid_color=(1, 1, 1),
                   edge_color=(0.5, 0.5, 0.5),
                   legend_bb=(0.15, -0.15, 0.7, 1.3),
                   legend_n_columns=6,
-                  colormap=None,
+                  colormap="tab10",
                   show_grid=True,
                   ):
         """
