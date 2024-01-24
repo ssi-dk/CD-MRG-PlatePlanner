@@ -160,7 +160,7 @@ class Study:
         """
         return self.plates[index]
         
-    def load_specimen_records(self, records_file: str, sample_group_id_column=None, sample_id_column=None) -> None:
+    def load_sample_file(self, records_file: str, sample_group_id_column=None, sample_id_column=None) -> None:
         """
         Loads specimen records from a specified file into the study.
 
@@ -662,12 +662,12 @@ class Study:
         if case_control:
             column_with_group_index = self._column_with_group_index
                         
-            logger.info(f"Randomly permuting group order (samples within group unchanged) using variable '{column_with_group_index}'")
+            logger.debug(f"Randomly permuting group order (samples within group unchanged) using variable '{column_with_group_index}'")
             logger.debug("Creating multiindex dataframe")
             specimen_records_df_copy = specimen_records_df_copy.set_index([column_with_group_index, specimen_records_df_copy.index])
             drop = False
         else:
-            logger.info(f"Randomly permuting sample order.")
+            logger.debug(f"Randomly permuting sample order.")
             specimen_records_df_copy = specimen_records_df_copy.set_index([specimen_records_df_copy.index, specimen_records_df_copy.index])
             column_with_group_index = 0
             drop = True
@@ -699,4 +699,48 @@ class Study:
 
         self._N_permutations += 1
         self.specimen_records_df = specimen_records_df_copy.copy()
-       
+
+    @staticmethod
+    def _get_attribute_distribution(df: pd.DataFrame, attribute):
+        distribution = df[attribute].value_counts(normalize=True)
+        return distribution
+
+    def randomize_with_uniformity_check(self, case_control, attribute, samples_per_plate, uniformity_criterion, max_attempts = 10, reproducible=False):
+        attempt = 0
+        while attempt < max_attempts:
+            self.randomize_order(case_control, reproducible)
+            if self._uniformity_within_tolerance(attribute, samples_per_plate, uniformity_criterion):
+                return
+            attempt += 1
+        raise Exception(f"Unable to achieve uniform distribution after {max_attempts} attempts")
+    
+    def _uniformity_within_tolerance(self, attribute, block_size, tolerance):
+        overall_distribution = self._get_attribute_distribution(self.specimen_records_df, attribute)
+        for start_idx in range(0, len(self.specimen_records_df), block_size):
+            end_idx = start_idx + block_size
+            block = self.specimen_records_df.iloc[start_idx:end_idx]
+            block_distribution = block[attribute].value_counts(normalize=True)
+
+            if not self._meets_criterion(block_distribution, overall_distribution, tolerance):
+                return False
+        return True
+
+    def _meets_criterion(self, block_distribution, overall_distribution, tolerance):
+        for category in overall_distribution.index:
+            overall_percent = overall_distribution[category] * 100
+            block_percent = block_distribution.get(category, 0) * 100  # Default to 0 if category not in block
+            if abs(block_percent - overall_percent) > tolerance:
+                return False
+        return True
+    
+    def get_attribute_plate_distributions(self, attribute) -> dict:
+        plate_distributions = {}
+
+        for plate in self.plates:
+            df = plate.as_dataframe()
+            distribution = self._get_attribute_distribution(df, attribute)
+            plate_distributions[plate.plate_id] = distribution
+
+        return plate_distributions
+
+                
