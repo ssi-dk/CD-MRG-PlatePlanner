@@ -596,7 +596,12 @@ class Plate:
 
         # Plot setup
         plt.style.use(plt_style)
-        fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=dpi)
+        fig = plt.figure(facecolor='white', figsize=(fig_width, fig_height), dpi=dpi,)
+        ax = fig.add_subplot(111, facecolor='white')
+        # fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=dpi, facecolor="white")
+
+        
+
         ax.scatter(Xgrid, Ygrid, s=size_grid, c=well_colors, alpha=alpha, edgecolors=edge_color)
 
         # Annotations
@@ -633,6 +638,9 @@ class Plate:
         ax.set_yticks(y)
         ax.set_yticklabels(self.row_labels[::-1])
 
+        # Remove the tick marks but keep the labels
+        ax.tick_params(axis='both', length=0) 
+
         # Grid settings
         if show_grid:
             ax.xaxis.grid(color=grid_color, linestyle='dashed', linewidth=1)
@@ -642,14 +650,14 @@ class Plate:
             ax.yaxis.grid(color=grid_color, linestyle='none',)
 
         
-        ax.set_xlim(minX - maxX*0.08, maxX - maxX*0.035)
-        ax.set_ylim(minY - maxY*0.07, maxY - maxY*0.02)
+        # ax.set_xlim(minX - maxX*0.08, maxX - maxX*0.035)
+        ax.set_ylim(minY - maxY*0.07, maxY - maxY*0.07)
 
-        # Set tick labels inside the plotting box
-        ax.tick_params(direction='in')
+        # # Set tick labels inside the plotting box
+        # ax.tick_params(direction='in')
 
-        # Ugly but works to adjust label padding
-        TICK_PADDING = -20
+        # # Ugly but works to adjust label padding
+        TICK_PADDING = 5
         xticks = [*ax.xaxis.get_major_ticks(), *ax.xaxis.get_minor_ticks()]
         yticks = [*ax.yaxis.get_major_ticks(), *ax.yaxis.get_minor_ticks()]
 
@@ -658,7 +666,7 @@ class Plate:
                 
         # ax.set_axisbelow(False)
                 # fig.subplots_adjust(left=0.15, right=0.95, top=0.85, bottom=0.15)
-        ax.set_title(title_str, fontsize=title_fontsize)
+        ax.set_title(title_str+"\n", fontsize=title_fontsize)
        
 
         # Set the position and size of the rounded rectangle
@@ -672,10 +680,21 @@ class Plate:
         line_width = 2  
 
         # Create a rounded rectangle
-        rounded_rectangle = FancyBboxPatch((x, y), width, height, boxstyle=f"round, pad={border_radius}", lw=line_width,ec=(0, 0, 0, edge_alpha), fc="none")
+        rounded_rectangle = FancyBboxPatch(
+            (x, y),
+            width,
+            height,
+            boxstyle=f"round, pad={border_radius}",
+            lw=line_width,
+            ec=(0, 0, 0,
+            edge_alpha),
+            fc=(0.95,0.95,0.95),
+            zorder=0)
 
         # Add the rounded rectangle to the axis
         ax.add_patch(rounded_rectangle)
+
+
 
         return fig
     
