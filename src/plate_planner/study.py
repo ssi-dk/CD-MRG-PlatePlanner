@@ -701,7 +701,11 @@ class Study:
         self.specimen_records_df = specimen_records_df_copy.copy()
 
     @staticmethod
-    def _get_attribute_distribution(df: pd.DataFrame, attribute):
+    def _get_attribute_distribution(df: pd.DataFrame, attribute, ignore_nans=True):
+        if ignore_nans:
+            df = df.replace("NaN", pd.NA)
+            df = df.dropna()
+
         distribution = df[attribute].value_counts(normalize=True)
         return distribution
 
@@ -733,12 +737,12 @@ class Study:
                 return False
         return True
     
-    def get_attribute_plate_distributions(self, attribute) -> dict:
+    def get_attribute_plate_distributions(self, attribute, ignore_nans=True) -> dict:
         plate_distributions = {}
 
         for plate in self.plates:
             df = plate.as_dataframe()
-            distribution = self._get_attribute_distribution(df, attribute)
+            distribution = self._get_attribute_distribution(df, attribute, ignore_nans)
             plate_distributions[plate.plate_id] = distribution
 
         return plate_distributions
