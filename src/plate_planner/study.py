@@ -6,6 +6,8 @@ from typing import Union, Iterator, Any
 import pandas as pd
 import numpy as np
 
+import matplotlib.pyplot as plt
+
 from plate_planner.plate import Plate, QCPlate
 from plate_planner.logger import logger
 
@@ -701,12 +703,12 @@ class Study:
         self.specimen_records_df = specimen_records_df_copy.copy()
 
     @staticmethod
-    def _get_attribute_distribution(df: pd.DataFrame, attribute, ignore_nans=True):
+    def _get_attribute_distribution(df: pd.DataFrame, attribute, ignore_nans=True, normalize=True):
         if ignore_nans:
             df = df.replace("NaN", pd.NA)
             df = df.dropna()
 
-        distribution = df[attribute].value_counts(normalize=True)
+        distribution = df[attribute].value_counts(normalize=normalize)
         return distribution
 
     def randomize_with_uniformity_check(self, case_control, attribute, samples_per_plate, uniformity_criterion, max_attempts = 10, reproducible=False):
@@ -737,14 +739,64 @@ class Study:
                 return False
         return True
     
-    def get_attribute_plate_distributions(self, attribute, ignore_nans=True) -> dict:
+    def get_attribute_plate_distributions(self, attribute, ignore_nans=True, normalize=True) -> dict:
         plate_distributions = {}
 
         for plate in self.plates:
             df = plate.as_dataframe()
-            distribution = self._get_attribute_distribution(df, attribute, ignore_nans)
+            distribution = self._get_attribute_distribution(df, attribute, ignore_nans, normalize)
             plate_distributions[plate.plate_id] = distribution
 
         return plate_distributions
+    
+    def plot_attribute_plate_distributions(self, attribute, normalize=False, colormap='tab20b'):
+        """
+        Plots a stacked bar chart for a specified attribute across different plates.
+
+        This method retrieves distribution data for the given attribute and plots it 
+        as a stacked bar chart. Each bar in the chart represents a different category 
+        of the attribute, with segments in the bar showing the count or proportion 
+        from each plate. The method supports normalization of the data and allows for 
+        customization of the plot's colormap.
+
+        Args:
+            attribute (str): The attribute for which the distributions are plotted.
+            normalize (bool, optional): If True, normalizes the counts within each 
+                category to proportions that sum to 100%. Defaults to False.
+            colormap (str, optional): The name of the matplotlib colormap to use for 
+                the plot. Defaults to 'tab20b'.
+
+        Returns:
+            matplotlib.figure.Figure: The figure object containing the bar chart.
+        """
+
+        distributions = self.get_attribute_plate_distributions(attribute=attribute, normalize=False)
+
+        # Convert the dictionary to a DataFrame and rename columns
+        df = pd.DataFrame(distributions)
+        df.columns = [f"plate_{key}" for key in distributions.keys()]
+
+        if normalize:
+            # Normalize each column to sum to 100%
+            df = df.div(df.sum(axis=1), axis=0) * 100
+
+        # Plotting the stacked bar chart
+        fig, ax = plt.subplots()
+
+        # Apply the chosen colormap
+        df.plot(kind='bar', stacked=True, ax=ax, colormap=colormap)
+
+        # Set titles and labels
+        ax.set_title(f"Counts of {attribute} across plates" + (" (Normalized)" if normalize else ""))
+        ax.set_xlabel(f"{attribute}")
+        ax.set_ylabel('Proportion (%)' if normalize else 'Counts')
+
+        # Place the legend outside of the plotting area
+        ax.legend(title="Plates", bbox_to_anchor=(1.05, 1), loc='upper left')
+
+        # Rotate and align x-axis labels
+        plt.xticks(rotation=45, ha='right')
+
+        return fig
 
                 
