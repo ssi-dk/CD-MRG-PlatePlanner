@@ -438,14 +438,14 @@ class Study:
     def to_layout_figures(self,
                           annotation_metadata_key : str,
                           color_metadata_key : str,
-                        file_format : str = "pdf",
+                        file_format : str = None,
                         folder_path : str = None,
                         plate_name : str = "Plate", **kwargs) -> None:
         """
-        Creates and saves visual representations of each plate in the study as figures.
+        Creates and visual representations of each plate in the study as figures.
 
         This method iterates over each plate in the study, generating a figure based on specified metadata keys
-        for annotation and coloring. The figures are saved in the specified file format in a designated folder.
+        for annotation and coloring. If the file format is specified, the figures are saved in the specified file format in a designated folder.
 
         Args:
             annotation_metadata_key (str): The metadata key used for annotating elements in the figure.
@@ -467,16 +467,17 @@ class Study:
             # with annotations and colorings based on 'sample_id' and 'status'.
         """
         
-        if folder_path is None:
-            folder_path = Path.cwd()
-        else:
-            folder_path = Path(folder_path)
+        if file_format is not None:
+            if folder_path is None:
+                folder_path = Path.cwd()
+            else:
+                folder_path = Path(folder_path)
 
-        # New folder path for "layout_lists"
-        new_folder_path = folder_path / "layout_figures"
+            # New folder path for "layout_lists"
+            new_folder_path = folder_path / "layout_figures"
 
-        # Create the "layout_lists" folder if it does not exist
-        new_folder_path.mkdir(parents=True, exist_ok=True)
+            # Create the "layout_lists" folder if it does not exist
+            new_folder_path.mkdir(parents=True, exist_ok=True)
             
         for plate in self:
             file_name = f"{self.name}_{plate_name}_{plate.plate_id}_{annotation_metadata_key}_{color_metadata_key}.{file_format}"
@@ -488,8 +489,9 @@ class Study:
             fig = plate.as_figure(annotation_metadata_key, color_metadata_key, title_str=title_str, **kwargs)
     
             logger.info(f"Saving plate figure to {file_path}")
-            
-            fig.savefig(file_path)
+
+            if file_format:
+                fig.savefig(file_path)
     
     def distribute_samples_to_plates(self, plate_layout: Union[Plate, QCPlate], allow_group_split=False, N_samples_desired_plate=None) -> None:
         """
@@ -749,7 +751,7 @@ class Study:
 
         return plate_distributions
     
-    def plot_attribute_plate_distributions(self, attribute, normalize=False, colormap='tab20b'):
+    def plot_attribute_plate_distributions(self, attribute, normalize=False, colormap='tab20b', plt_style="ggplot"):
         """
         Plots a stacked bar chart for a specified attribute across different plates.
 
@@ -781,6 +783,7 @@ class Study:
             df = df.div(df.sum(axis=1), axis=0) * 100
 
         # Plotting the stacked bar chart
+        plt.style.use(plt_style)
         fig, ax = plt.subplots()
 
         # Apply the chosen colormap

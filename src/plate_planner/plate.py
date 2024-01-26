@@ -531,6 +531,7 @@ class Plate:
                   legend_n_columns=6,
                   colormap="tab10",
                   show_grid=True,
+                  show_frame=True
                   ):
         """
         Create a visual representation of the plate using matplotlib.
@@ -558,6 +559,7 @@ class Plate:
             legend_n_columns (int, optional): Number of columns in the legend. Default is 6.
             colormap (str, optional): Colormap name for coloring wells. Uses default colormap if None.
             show_grid (bool, optional): If True, displays a grid anchored at the well centers; default is True.
+            show_grid (bool, optional): If True, plot a rectangle to frame the wells; default is True.
 
         Returns:
             matplotlib.figure.Figure: A figure object representing the plate.
@@ -599,8 +601,11 @@ class Plate:
         fig = plt.figure(facecolor='white', figsize=(fig_width, fig_height), dpi=dpi,)
         ax = fig.add_subplot(111, facecolor='white')
         # fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=dpi, facecolor="white")
-
-        
+        # Remove the axis lines
+        ax.spines['top'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.spines['right'].set_visible(False)
 
         ax.scatter(Xgrid, Ygrid, s=size_grid, c=well_colors, alpha=alpha, edgecolors=edge_color)
 
@@ -669,32 +674,31 @@ class Plate:
         ax.set_title(title_str+"\n", fontsize=title_fontsize)
        
 
-        # Set the position and size of the rounded rectangle
-        x = minX- maxX*0.03  # X-coordinate of the lower-left corner
-        y = minY - maxY*0.04 # Y-coordinate of the lower-left corner
-        width = maxX*0.975 # Width of the rectangle
-        height = maxY*0.955  # Height of the rectangle
-        border_radius = 1  # Radius of the rounded corners
+        if show_frame:
+           
+            x = minX- maxX*0.03  # X-coordinate of the lower-left corner
+            y = minY - maxY*0.04 # Y-coordinate of the lower-left corner
+            width = maxX*0.975 # Width of the rectangle
+            height = maxY*0.955  # Height of the rectangle
+            border_radius = 1  # Radius of the rounded corners
 
-        edge_alpha = 0.1
-        line_width = 2  
+            edge_alpha = 0.1
+            line_width = 2  
 
-        # Create a rounded rectangle
-        rounded_rectangle = FancyBboxPatch(
-            (x, y),
-            width,
-            height,
-            boxstyle=f"round, pad={border_radius}",
-            lw=line_width,
-            ec=(0, 0, 0,
-            edge_alpha),
-            fc=(0.95,0.95,0.95),
-            zorder=0)
+            # Create a rounded rectangle
+            rounded_rectangle = FancyBboxPatch(
+                (x, y),
+                width,
+                height,
+                boxstyle=f"round, pad={border_radius}",
+                lw=line_width,
+                ec=(0, 0, 0,
+                edge_alpha),
+                fc=(0.95,0.95,0.95),
+                zorder=0)
 
-        # Add the rounded rectangle to the axis
-        ax.add_patch(rounded_rectangle)
-
-
+            # Add the rounded rectangle to the axis
+            ax.add_patch(rounded_rectangle)
 
         return fig
     
