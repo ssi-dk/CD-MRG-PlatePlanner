@@ -167,7 +167,7 @@ class Plate:
                            index=index, 
                            plate_id=plate_id, 
                            rgb_color=self._default_well_color)
-                      for index, (row, col) in enumerate(itertools.product(self._rows, self._columns))]
+                      for index, (row, col) in enumerate(itertools.product(self._rows[::-1], self._columns))]
         
         self.plate_id = plate_id
         
@@ -590,7 +590,7 @@ class Plate:
         y = np.arange(minY, maxY, step)
 
         # Generate grid with columns first (column-major format)
-        Xgrid, Ygrid = np.meshgrid(x, y[::-1])
+        Xgrid, Ygrid = np.meshgrid(x, y)
 
         size_grid = np.ones_like(Xgrid) * well_size
 
