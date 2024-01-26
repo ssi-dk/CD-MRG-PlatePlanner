@@ -55,17 +55,19 @@ fig = study_with_qc[2].as_figure(
     rotation=45,
     )
 
+```
+![Alt text](docs/assets/qc_plate_layout_example.png "plate visualization example")
+
+
+```py
 #mshow distribution of sample attribute across all plates
 fig = study_with_qc.plot_attribute_plate_distributions(attribute="organ", normalize=True, plt_style="fivethirtyeight")
 
 ```
 
-## Visualization Examples
-Here are some examples of plate visualizations created using PlatePlanner:
+<img src="docs/assets/study_attribute_plate_distribution_example.png" alt="attribute distribution across plates visualization example" title="Attribute plate distributions" width="800"/>
 
-![Alt text](docs/assets/qc_plate_layout_example.png "plate visualization example")
-
-![Alt text](docs/assets/study_attribute_plate_distribution_example.png "attribute distribution across plates visualization example")
+<!-- ![Alt text](docs/assets/study_attribute_plate_distribution_example.png "attribute distribution across plates visualization example") -->
 
 ## Contributing
 
