@@ -4,7 +4,7 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - python==3.9
+  - python>=3.9
   - pandas
   - ipython
   - ipykernel
@@ -16,5 +16,10 @@ dependencies:
   - autopep8
   - hatch
   - pytest
-  - faker
+  - mkdocs
+  - mkdocs-autorefs
+  - mkdocs-material
+  - mkdocs-material-extensions
+  - mkdocstrings
+  - mkdocstrings-python
 prefix: /home/filip/anaconda3/envs/general-ds
