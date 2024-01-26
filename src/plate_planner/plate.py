@@ -594,7 +594,7 @@ class Plate:
 
         size_grid = np.ones_like(Xgrid) * well_size
 
-        well_colors = np.ravel((self.get_metadata_as_numpy_array("rgb_color")))
+        well_colors = np.ravel((self.get_metadata_as_numpy_array("rgb_color")[::-1]))
 
         # Plot setup
         plt.style.use(plt_style)
