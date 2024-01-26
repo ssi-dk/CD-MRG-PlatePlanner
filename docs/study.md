@@ -1,4 +1,4 @@
 # Study Documentation
-::: src.study
+::: src.plate_planner.study
     handler: python
     

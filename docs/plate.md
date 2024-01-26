@@ -1,3 +1,3 @@
 # Plate Documentation
-::: src.plate
+::: src.plate_planner.plate
     handler: python

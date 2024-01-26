@@ -51,7 +51,7 @@ plugins:
       default_handler: python
       handlers:
         python:
-          paths: [src]
+          paths: [src/plate_planner/]
 
 extra_css:
   - stylesheets/extra.css
