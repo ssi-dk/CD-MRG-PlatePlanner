@@ -1,4 +1,5 @@
-# .github/workflows/ci-cd.yml
+# .github/workflows/publish-to-pypi.yml
+name: publish-to-pypi
 on:
   release:
     types: [created]
