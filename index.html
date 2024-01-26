@@ -14,7 +14,7 @@
       
       
       <link rel="icon" href="assets/favicon_2.png">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.4">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.5">
     
     
       
@@ -333,6 +333,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#visualization-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualization Examples
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -541,6 +550,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#visualization-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualization Examples
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -563,43 +581,48 @@
 <p>PlatePlanner is a Python package designed to simplify plate layout creation for LC-MS studies, and is also applicable for various laboratory applications where sample distribution to plates is required, with or without QC sample patterns. Its user-friendly API supports dynamic QC sample patterns, easy creation of run lists, and plate visualizations.</p>
 <h2 id="key-features">Key features</h2>
 <ul>
-<li><strong>Dynamic QC Sample Patterns</strong>: Effortlessly create plate layouts with customizable QC sample patterns.</li>
-<li><strong>Flexible Sample Distribution</strong>: Distribute samples within groups across plates, accommodating variable numbers of samples per group. This feature is ideal for studies with uneven sample time points or group sizes.</li>
-<li><strong>Non-Split/ Split Group Handling</strong>: Choose to distribute samples within groups without splitting them over plates, or opt for splitting when necessary, offering you complete control over your sample layout.</li>
-<li><strong>Customizable Run Lists &amp; Plate Visualizations</strong>: Generate detailed run lists and visualize plate assignments seamlessly.</li>
-<li><strong>Block Randomization</strong>: Prevent run order bias by using the block randomization feature. </li>
-<li>NOT IMPLEMENTED: <strong>Stratified Randomization for Sample Balance</strong>: Prevent bias in sample group characteristics. This feature ensures an even distribution of important group attributes (like gender, age, disease status, etc.) across all LC-MS plates or batches. </li>
+<li><strong>Dynamic QC Sample Patterns</strong>: Create plate layouts with customizable QC sample patterns.</li>
+<li><strong>Flexible Sample Distribution</strong>: Distribute samples within groups across plates, accommodating variable numbers of samples per group.</li>
+<li><strong>Non-Split/Split Group Handling</strong>: Control over distributing samples within groups without splitting them over plates or splitting when necessary.</li>
+<li><strong>Customizable Run Lists &amp; Plate Visualizations</strong>: Generate run lists and visualize plate assignments.</li>
+<li><strong>Block Randomization</strong>: Perform sample randomizaition or sample block randomization to prevent run order bias.</li>
 </ul>
 <h2 id="installation">Installation</h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install plate-planner
 </span></code></pre></div>
 <h2 id="example">Example</h2>
 <p>Here's a quick guide to using PlatePlanner:</p>
-<div class="language-py highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span> <span class="nn">plate_layout</span> <span class="kn">import</span> <span class="n">Study</span><span class="p">,</span> <span class="n">QCPlate</span>
+<div class="language-py highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span> <span class="nn">plate</span><span class="o">-</span><span class="n">planner</span> <span class="kn">import</span> <span class="nn">Study</span><span class="o">,</span> <span class="nn">QCPlate</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># create a study and load your sfile with sample records (csv, xls/xlsx)</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">study</span> <span class="o">=</span> <span class="n">Study</span><span class="o">.</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;cancer&quot;</span><span class="p">)</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">study</span><span class="o">.</span><span class="n">load_specimen_records</span><span class="p">(</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="n">records_file</span> <span class="o">=</span> <span class="s2">&quot;./data/study_samples.csv&quot;</span><span class="p">,</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="n">sample_group_id_column</span> <span class="o">=</span> <span class="s2">&quot;pair_ID&quot;</span><span class="p">,</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="n">sample_id_column</span> <span class="o">=</span> <span class="s2">&quot;specimen_ID&quot;</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Create a study and load your file with sample records (csv, xls/xlsx)</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">study_with_qc</span> <span class="o">=</span> <span class="n">Study</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;cancer&quot;</span><span class="p">)</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">study_with_qc</span><span class="o">.</span><span class="n">load_specimen_records</span><span class="p">(</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">records_file</span><span class="o">=</span><span class="s2">&quot;./data/study_samples.csv&quot;</span><span class="p">,</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">sample_group_id_column</span><span class="o">=</span><span class="s2">&quot;pair_ID&quot;</span><span class="p">,</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">sample_id_column</span><span class="o">=</span><span class="s2">&quot;specimen_ID&quot;</span>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="p">)</span>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1"># block randomize groups</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">study</span><span class="o">.</span><span class="n">randomize_order</span><span class="p">(</span><span class="n">case_control</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reproducible</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1"># Block randomize groups</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">study_with_qc</span><span class="o">.</span><span class="n">randomize_order</span><span class="p">(</span><span class="n">case_control</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reproducible</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="c1"># distribute samples to a 96-well plate with QC samples as defined in the toml file</span>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">qc_plate</span> <span class="o">=</span> <span class="n">QCPlate</span><span class="p">(</span><span class="n">plate_dim</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">12</span><span class="p">),</span> <span class="n">QC_config</span><span class="o">=</span><span class="s2">&quot;./data/plate_config_dynamic.toml&quot;</span><span class="p">)</span>
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="n">study</span><span class="o">.</span><span class="n">distribute_samples_to_plates</span><span class="p">(</span><span class="n">plate_layout</span><span class="o">=</span><span class="n">qc_plate</span><span class="p">)</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="c1"># Distribute samples to a 96-well plate with QC samples as defined in the toml file</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">qc_plate</span> <span class="o">=</span> <span class="n">QCPlate</span><span class="p">(</span><span class="n">plate_dim</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="n">QC_config</span><span class="o">=</span><span class="s2">&quot;./data/plate_config_dynamic.toml&quot;</span><span class="p">)</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="n">study_with_qc</span><span class="o">.</span><span class="n">distribute_samples_to_plates</span><span class="p">(</span><span class="n">plate_layout</span><span class="o">=</span><span class="n">qc_plate</span><span class="p">)</span>
 </span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
-</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
-</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="c1"># create visualization for plate 3</span>
-</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">study</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">as_figure</span><span class="p">(</span><span class="n">color_metadata_key</span><span class="o">=</span><span class="s2">&quot;organ&quot;</span><span class="p">,</span> <span class="n">annotation_metadata_key</span><span class="o">=</span><span class="s2">&quot;object&quot;</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
-</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>
-</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">study</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">to_layout_figures</span><span class="p">(</span><span class="n">annotation_metadata_key</span><span class="o">=</span><span class="s2">&quot;sample_name&quot;</span><span class="p">,</span> <span class="n">color_metadata_key</span><span class="o">=</span><span class="s2">&quot;sample_code&quot;</span><span class="p">,</span> <span class="n">file_format</span><span class="o">=</span><span class="s2">&quot;png&quot;</span><span class="p">)</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="c1"># Create visualization for plate 3</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">study_with_qc</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">as_figure</span><span class="p">(</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    <span class="n">color_metadata_key</span><span class="o">=</span><span class="s2">&quot;organ&quot;</span><span class="p">,</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">annotation_metadata_key</span><span class="o">=</span><span class="s2">&quot;date_of_birth&quot;</span><span class="p">,</span>
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    <span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">,</span>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    <span class="p">)</span>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="c1">#mshow distribution of sample attribute across all plates</span>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">study_with_qc</span><span class="o">.</span><span class="n">plot_attribute_plate_distributions</span><span class="p">(</span><span class="n">attribute</span><span class="o">=</span><span class="s2">&quot;organ&quot;</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">plt_style</span><span class="o">=</span><span class="s2">&quot;fivethirtyeight&quot;</span><span class="p">)</span>
 </span></code></pre></div>
-<p><img alt="Alt text" src="assets/cancer_Plate_7_object_organ.png" title="Image Title" /></p>
-<p><img alt="Alt text" src="assets/cancer_Plate_7_sample_name_sample_code.png" title="Image Title" /></p>
+<h2 id="visualization-examples">Visualization Examples</h2>
+<p>Here are some examples of plate visualizations created using PlatePlanner:</p>
+<p><img alt="Alt text" src="assets/qc_plate_layout_example.png" title="plate visualization example" /></p>
+<p><img alt="Alt text" src="assets/study_attribute_plate_distribution_example.png" title="attribute distribution across plates visualization example" /></p>
 
 
 
@@ -650,10 +673,10 @@
     </div>
     
     
-    <script id="__config" type="application/json">{"base": ".", "features": ["content.code.copy"], "search": "assets/javascripts/workers/search.c011b7c0.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": ".", "features": ["content.code.copy"], "search": "assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="assets/javascripts/bundle.7389ff0e.min.js"></script>
+      <script src="assets/javascripts/bundle.c18c5fb9.min.js"></script>
       
     
   </body>
