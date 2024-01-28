@@ -104,6 +104,31 @@ class Well:
         # Check if it's a key in metadata
         return self.metadata.get(key, "NaN")
         # return self.metadata.get(key, "")
+    
+    def set_attribute_or_metadata(self, key: str, value: Any):
+        """
+        Set the value of a direct attribute or a key in the metadata dictionary.
+
+        This method first checks if the provided key corresponds to a direct 
+        attribute of the well object. If so, it sets the value of that attribute. 
+        If not, it then updates or adds the key-value pair in the metadata dictionary.
+
+        Parameters:
+            key (str): The attribute name or metadata key.
+            value (Any): The value to be set for the attribute or metadata key.
+
+        Example:
+        # Set attribute and metadata values for a Well instance:
+        >>> well = Well(name="B2", plate_id=2, coordinate=(1, 1), index=5, rgb_color=(0.5, 0.5, 0.5))
+        >>> well.set_attribute_or_metadata("plate_id", 3)
+        >>> well.set_attribute_or_metadata("sample_type", "serum")
+        """
+        # Check if it's a direct attribute
+        if hasattr(self, key):
+            setattr(self, key, value)
+        else:
+            # Set/Add a key-value pair in metadata
+            self.metadata[key] = value
 
 
 class Plate:
