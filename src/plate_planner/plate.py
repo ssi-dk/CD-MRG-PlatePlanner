@@ -41,15 +41,63 @@ class Well:
         metadata (Dict[str, Any]): Additional metadata for the well (default: empty dictionary).
 
     Example:
-        >>> well = Well(name="B2", plate_id=2, coordinate=(1, 1), index=5, rgb_color=(0.5, 0.5, 0.5),)
+        >>> well = Well(name="B2", plate_id=2, coordinate=(1, 6), index=13,)
+        >>> well
+        Well(name='B2', plate_id=2, coordinate=(1, 6), index=13, empty=True, rgb_color=(1, 1, 1), metadata={})
+
     """
     name: str = "A1"
     plate_id: int = 1
     coordinate: Tuple[int, int] = field(default_factory=lambda: (0, 0))
-    index: int = None
+    index: int = 0
     empty: bool = True
     rgb_color: Tuple[float, float, float] = field(default_factory=lambda: (1, 1, 1))
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __repr__(self):
+        """
+        Provide an unambiguous string representation of the Well object.
+
+        Returns:
+            str: A string representation of the well.
+
+        Example:
+            >>> well = Well(name="B3", plate_id=2, coordinate=(1, 2), index=3)
+            >>> repr(well)
+            "Well(name='B3', plate_id=2, coordinate=(1, 2), index=3, empty=True, rgb_color=(1, 1, 1), metadata={})"
+        """
+        return (f"Well(name='{self.name}', plate_id={self.plate_id}, "
+                f"coordinate={self.coordinate}, index={self.index}, "
+                f"empty={self.empty}, rgb_color={self.rgb_color}, metadata={self.metadata})")
+
+    def __eq__(self, other):
+        """
+        Compare this Well object with another for equality.
+
+        Parameters:
+            other (Well): Another Well object to compare with.
+
+        Returns:
+            bool: True if both Well objects are considered equal, False otherwise.
+
+        Example:
+            >>> well1 = Well(name="A1", plate_id=1)
+            >>> well2 = Well(name="A1", plate_id=1)
+            >>> well3 = Well(name="B1", plate_id=1)
+            >>> well4 = Well(name="A1", plate_id=2)
+            >>> well1 == well2
+            True
+            >>> well1 == well3
+            False
+            >>> well4 == well1
+            False
+        """
+        if isinstance(other, Well):
+            return (self.name == other.name and self.plate_id == other.plate_id
+                    and self.coordinate == other.coordinate
+                    and self.index == other.index and self.empty == other.empty
+                    and self.rgb_color == other.rgb_color and self.metadata == other.metadata)
+        return False
 
     def as_dict(self):
         """
@@ -63,10 +111,10 @@ class Well:
 
         Example:
             Convert a Well instance to a dictionary:
-            >>> well = Well(name="B2", plate_id=2, coordinate=(1, 1), index=5, rgb_color=(0.5, 0.5, 0.5))
+            >>> well = Well(name="B2", plate_id=2, coordinate=(1, 6), index=13, rgb_color=(0.5, 0.5, 0.5))
             >>> well_dict = well.as_dict()
             >>> print(well_dict)
-            {'name': 'B2', 'plate_id': 2, 'coordinate': (1, 1), 'index': 5, 'rgb_color': (0.5, 0.5, 0.5)}
+            {'name': 'B2', 'plate_id': 2, 'coordinate': (1, 6), 'index': 13, 'empty': True, 'rgb_color': (0.5, 0.5, 0.5)}
 
         """
         attrib_dict = asdict(self)
@@ -150,6 +198,7 @@ class Plate:
     Parameters:
         plate_dim (Tuple[int, int], optional): The dimensions of the plate as (rows, columns).
         plate_id (int, optional): A unique identifier for the plate.
+
     """
 
     _default_n_rows: int = 8
@@ -173,9 +222,13 @@ class Plate:
         Examples:
             Creating a Plate instance with default dimensions and a specific plate ID:
 
-            >>> plate = Plate(plate_id=1)
-            >>> plate.size  # This will depend on the default number of rows and columns
-            96  # Example output, assuming 8 rows x 12 columns
+            >>> plate = Plate()
+            >>> plate.size
+            96
+
+            >>> plate = Plate(plate_dim=(16, 24))
+            >>> plate.size
+            384
 
         """
 
@@ -206,6 +259,16 @@ class Plate:
         logger.info(f"Created a {self._n_rows}x{self._n_columns} plate with {self.size} wells.")
 
     def __iter__(self):
+        """
+        Return an iterator over the wells of the plate.
+
+        This allows direct iteration over the plate object itself.
+
+        Example:
+            >>> plate = Plate(plate_dim=(2, 2))
+            >>> [well.name for well in plate]
+            ['A1', 'A2', 'B1', 'B2']
+        """
         return iter(self.wells)
 
     def __len__(self):
@@ -214,6 +277,11 @@ class Plate:
 
         Returns:
             int: The number of wells.
+
+        Example:
+            >>> plate = Plate()
+            >>> len(plate)
+            96
         """
         return len(self.wells)
     
@@ -238,6 +306,15 @@ class Plate:
 
         Raises:
             TypeError: If the key is not an integer, tuple, or string.
+
+        Example:
+            >>> plate = Plate()
+            >>> plate[0].name
+            'A1'
+            >>> plate[(0, 0)].name
+            'A1'
+            >>> plate["A1"].name
+            'A1'
         """
         if isinstance(key, int):
             # Access by index
@@ -266,6 +343,15 @@ class Plate:
             ValueError: If the well_object is not an instance of Well.
             IndexError: If the well index is out of range.
             TypeError: If the key is not a string, integer, or tuple.
+
+        Example:
+            >>> plate = Plate(plate_dim=(2, 2))  # Create a small 2x2 plate for simplicity
+            >>> new_well = Well(name="C3", plate_id=1, coordinate=(0, 1), metadata={"study_group": "control"})  # Define a new well
+            >>> plate[0] = new_well  # Set this well at the first position
+            >>> plate[0].name
+            'A1'
+            >>> plate[0].metadata["study_group"]
+            'control'
         """
         if not isinstance(well_object, Well):
             raise ValueError("Value must be an instance of Well")
@@ -298,7 +384,48 @@ class Plate:
         # Update the name-to-index mapping
         self._name_to_index_map[name] = index
 
-    def _parse_plate_dimensions(self, plate_dim: Union[Tuple[int, int], List[int], Dict[str, int], int]):
+    def __add__(self, other: "Plate") -> "Plate":
+        """
+        Combine the content of this Plate with another Plate.
+
+        The wells of both plates are combined. If wells at the same coordinates 
+        exist in both plates, their metadata is merged.
+
+        Parameters:
+            other (Plate): Another Plate to combine with.
+
+        Returns:
+            Plate: A new Plate with combined content from both plates.
+
+        Raises:
+            ValueError: If the dimensions of the two plates do not match.
+
+        Example:
+            >>> plate1 = Plate(plate_dim=(2, 2))
+            >>> plate1.wells[0].metadata = {'sample': 'A'}
+            >>> plate2 = Plate(plate_dim=(2, 2))
+            >>> plate2.wells[0].metadata = {'volume': 100}
+            >>> combined_plate = plate1 + plate2
+            >>> combined_plate.wells[0].metadata
+            {'sample': 'A', 'volume': 100}
+        """
+        if (self._n_rows, self._n_columns) != (other._n_rows, other._n_columns):
+            raise ValueError("Cannot add plates of different dimensions")
+
+        # Create a new Plate for the combined content
+        new_plate = Plate(plate_dim=(self._n_rows, self._n_columns))
+
+        # Iterate through wells and combine metadata
+        for (well_self, well_other) in zip(self.wells, other.wells):
+            combined_metadata = {**well_self.metadata, **well_other.metadata}
+            new_well = Well(name=well_self.name, plate_id=new_plate.plate_id,
+                            coordinate=well_self.coordinate, index=well_self.index,
+                            rgb_color=well_self.rgb_color, metadata=combined_metadata)
+            new_plate.wells[well_self.index] = new_well
+
+        return new_plate
+
+    def _parse_plate_dimensions(self, plate_dim: Union[Tuple[int, int], List[int], Dict[str, int], int]) -> Tuple[int, int]:
         """
         Parse the dimensions of the plate and return the number of rows and columns. This method can handle various 
         formats for specifying the dimensions: as a tuple or list (rows, columns), as a dictionary with 'rows' and 
@@ -318,6 +445,17 @@ class Plate:
         Raises:
             ValueError: If the plate_dim format is unsupported or incorrect, or if the number of wells specified by 
                 an integer cannot be reasonably fitted into a 2:3 aspect ratio plate.
+
+        Example:
+            >>> plate = Plate()
+            >>> plate._parse_plate_dimensions((3, 5))
+            (3, 5)
+            >>> plate._parse_plate_dimensions([4, 6])
+            [4, 6]
+            >>> plate._parse_plate_dimensions({"rows": 2, "columns": 8})
+            (2, 8)
+            >>> plate._parse_plate_dimensions(24)  # Assuming 2:3 aspect ratio
+            (4, 6)
         """
         if plate_dim is None:
             return self._default_n_rows, self._default_n_columns
@@ -386,6 +524,18 @@ class Plate:
 
         Raises:
             Warning: If the number of data elements does not match the plate's size.
+
+        Example:
+            # Using a Plate with 4 wells (2x2) for demonstration
+            >>> plate = Plate(plate_dim=(2, 2))
+            >>> data = [1, 2, 3, 4]  # Sample data corresponding to each well
+            >>> array = plate._to_numpy_array(data)
+            >>> array.shape
+            (2, 2)
+            >>> array[0, 1]  # Check the value in the first well (after flipping)
+            2
+            >>> array[1, 0]  # Check the value in the last well (after flipping)
+            3
         """
         # Create an empty array of the right shape
         plate_array = np.empty((self._n_rows, self._n_columns), dtype=object)
@@ -410,6 +560,16 @@ class Plate:
 
         Returns:
             list: A list of metadata values for each well in the plate.
+
+        Example:
+            # Using a Plate with 4 wells and adding metadata for demonstration
+            >>> plate = Plate(plate_dim=(2, 2))
+            >>> for well in plate.wells:
+            ...     well.metadata['sample_type'] = 'RNA'
+            >>> plate.get_metadata('sample_type')
+            ['RNA', 'RNA', 'RNA', 'RNA']
+            >>> plate.get_metadata('non_existing_key')  # Key not present
+            ['NaN', 'NaN', 'NaN', 'NaN']
         """
         if metadata_key is None:
             return ["NaN" for _ in self.wells]
@@ -430,18 +590,24 @@ class Plate:
 
         Returns:
             numpy.ndarray: A numpy array representing the metadata values for the plate's layout.
+
+         Example:
+            # Using a Plate with 4 wells and adding metadata for demonstration
+            >>> plate = Plate(plate_dim=(2, 2))
+            >>> for well in plate.wells:
+            ...     well.metadata['concentration'] = 10.0
+            >>> array = plate.get_metadata_as_numpy_array('concentration')
+            >>> array.shape
+            (2, 2)
+            >>> array[0, 0]  # Value in the first well
+            10.0
         """
         metadata = self.get_metadata(metadata_key)
+
         return self._to_numpy_array(metadata)
     
-    def _is_qualitative_colormap(self, colormap_name):
-        """Check if a given colormap is qualitative."""
-        # This list can be expanded with more qualitative colormaps
-        qualitative_colormaps = ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 
-                                'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c']
-        return colormap_name in qualitative_colormaps
-    
-    def assign_well_color(self, metadata_key: Optional[str], colormap: str) -> None:
+
+    def _assign_well_color(self, metadata_key: Optional[str], colormap: str) -> None:
         """
         Assign colors to each well in the plate based on the specified metadata key and colormap.
         
@@ -453,6 +619,14 @@ class Plate:
         Raises:
             ValueError: If the metadata_key is invalid or not found.
         """
+
+        def is_qualitative_colormap(colormap_name):
+            """Check if a given colormap is qualitative."""
+            # This list can be expanded with more qualitative colormaps
+            qualitative_colormaps = ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 
+                                    'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c']
+            return colormap_name in qualitative_colormaps
+        
         if colormap is None:
             colormap = self._default_colormap
 
@@ -465,7 +639,7 @@ class Plate:
             
             cmap = plt.get_cmap(colormap)
 
-            if self._is_qualitative_colormap(colormap):
+            if is_qualitative_colormap(colormap):
                 # Use colors directly for qualitative colormaps
                 colors = cmap.colors
                 for i, value in enumerate(unique_values):
@@ -502,6 +676,15 @@ class Plate:
 
         Returns:
             list of dict: A list where each element is a dictionary representing a well's attributes.
+
+        Example:
+            >>> plate = Plate(plate_dim=(1, 2))
+            >>> plate[0].metadata["sample_type"] = "plasma" # set metadata for first well
+            >>> records = plate.as_records()
+            >>> len(records)  # Number of wells in the plate
+            2
+            >>> sorted(records[0].keys())  # Show the keys of the first well's dictionary
+            ['coordinate', 'empty', 'index', 'name', 'plate_id', 'rgb_color', 'sample_type']
         """
         return [well.as_dict() for well in self]
 
@@ -513,6 +696,12 @@ class Plate:
 
         Returns:
             pandas.DataFrame: A DataFrame representing the plate's wells and their attributes.
+        
+        Example:
+        >>> plate = Plate()
+        >>> df = plate.as_dataframe()
+        >>> len(df)
+        96
         """
         return pd.DataFrame(self.as_records())
     
@@ -559,7 +748,7 @@ class Plate:
                   colormap="tab10",
                   show_grid=True,
                   show_frame=True
-                  ):
+                  ) -> 'matplotlib.figure.Figure':
         """
         Create a visual representation of the plate using matplotlib.
 
@@ -609,7 +798,7 @@ class Plate:
                 title_str += f", showing {annotation_metadata_key or ''} colored by {color_metadata_key or ''}"
 
         # Assign colors to wells
-        self.assign_well_color(color_metadata_key, colormap)
+        self._assign_well_color(color_metadata_key, colormap)
 
         # Prepare grid and data for plotting
         minX, maxX, minY, maxY = 0, len(self._columns)*step, 0, len(self._rows)*step
@@ -745,7 +934,7 @@ class Plate:
         text_rotation=0,
         show_grid=True,
         theme='plotly'
-    ):
+    ) -> 'plotly.graph_objs._figure.Figure':
         """
         Generates a Plotly scatter plot representing the data of a biological plate.
 
@@ -772,7 +961,7 @@ class Plate:
             theme (str): Plotly theme. Default is 'plotly'.
 
         Returns:
-            plotly.graph_objs._scatter.Figure: A Plotly scatter plot figure.
+            plotly.graph_objs._figure.Figure.Figure: A Plotly scatter plot figure.
 
         Example:
 
@@ -814,10 +1003,8 @@ class Plate:
         df['column'] = df['coordinate'].apply(lambda c: step*c[1])
         df['row'] = df['coordinate'].apply(lambda c: step*c[0])
 
-
         # hover_data = ["name"] + list(plate[0].metadata.keys())
         hover_data = ["name"] + list(self[0].metadata.keys())
-
 
         # Determine color scale and plot type based on the data type of color_metadata_key
         if df[color_metadata_key].dtype.kind in 'ifc':  # Numeric data - continuous
@@ -953,6 +1140,16 @@ class Plate:
         Parameters:
             key (str): The metadata key to add or update.
             values: A single value or a list of values to set for the given metadata key. 
+
+        Example:
+            >>> plate = Plate(plate_dim=(2, 2))
+            >>> plate.add_metadata('sample_type', ['RNA', 'DNA', 'RNA', 'DNA'])
+            >>> [well.metadata['sample_type'] for well in plate.wells]
+            ['RNA', 'DNA', 'RNA', 'DNA']
+            >>> plate.add_metadata('study', 'oncology')
+            >>> all(well.metadata['study'] == 'oncology' for well in plate.wells)
+            True
+
         """
         if isinstance(values, list):
             # Case when values is a list
@@ -976,6 +1173,11 @@ class Plate:
 
         Returns:
             list: A list of strings, each representing a row label.
+
+        Example:
+            >>> plate = Plate(plate_dim=(8, 12))  # A standard 96-well plate
+            >>> plate.row_labels
+            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
         """
         return list(string.ascii_uppercase)[:len(self._rows)]
     
@@ -989,6 +1191,11 @@ class Plate:
 
         Returns:
             list: A list of strings, each representing a column label.
+
+        Example:
+            >>> plate = Plate(plate_dim=(8, 12))  # A standard 96-well plate
+            >>> plate.column_labels
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
         """
         return [str(row_id+1) for row_id in self._columns]
     
@@ -996,6 +1203,11 @@ class Plate:
     def capacity(self):
         """
         Get the number of samples that can be added to the plate, which is the same as the number of wells in this class
+
+        Example:
+            >>> plate = Plate(plate_dim=(8, 12))  # A standard 96-well plate
+            >>> plate.capacity
+            96
         """
         return self.size
     
@@ -1008,6 +1220,11 @@ class Plate:
 
         Returns:
             int: The plate ID.
+
+        Example:
+            >>> plate = Plate()
+            >>> plate.plate_id
+            1
         """
         return self._plate_id
 
@@ -1021,6 +1238,12 @@ class Plate:
 
         Parameters:
             new_id (int): The new plate ID to be set.
+
+        Example:
+            >>> plate = Plate()
+            >>> plate.plate_id = 2
+            >>> plate.plate_id
+            2
         """
         self._plate_id = new_id
         for well in self.wells:
@@ -1041,6 +1264,10 @@ class Plate:
 
         Returns:
             list: A list of tuples, each representing the (row, column) index of a well.
+
+        Example:
+            >>> Plate.create_index_coordinates(range(2), range(2))
+            [(1, 0), (1, 1), (0, 0), (0, 1)]
         """
         # count from left to right, starting at well in top left
         return list(itertools.product(
