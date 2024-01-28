@@ -506,6 +506,17 @@ class Plate:
 
         Raises:
             IndexError: If the coordinate is out of range of the plate's dimensions.
+
+        Example:
+            >>> plate = Plate(plate_dim=(3, 4))  # A 3x4 plate
+            >>> plate._coordinates_to_index((0, 0))
+            0
+            >>> plate._coordinates_to_index((2, 3))
+            11
+            >>> plate._coordinates_to_index((3, 0))  # This should raise an IndexError
+            Traceback (most recent call last):
+            ...
+            IndexError: Coordinate out of range
         """
         row, col = coordinate
         if row < 0 or row >= self._n_rows or col < 0 or col >= self._n_columns:
@@ -1287,6 +1298,12 @@ class Plate:
 
         Returns:
             list: A list of alphanumerical coordinates (e.g., "A1", "B2").
+
+        Example:
+            >>> Plate.create_alphanumerical_coordinates([0, 1], [0, 1, 2])
+            ['A1', 'A2', 'A3', 'B1', 'B2', 'B3']
+            >>> Plate.create_alphanumerical_coordinates([0], [0, 1])
+            ['A1', 'A2']
         """
         row_labels = list(string.ascii_uppercase)[:len(rows)]
         return [f"{row_labels[row]}{col+1}" for row, col in itertools.product(rows, columns)]
