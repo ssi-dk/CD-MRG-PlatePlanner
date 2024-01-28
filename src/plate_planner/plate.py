@@ -10,6 +10,8 @@ from typing import Tuple, Union, Optional, Dict, Any, List
 import numpy as np
 import pandas as pd
 
+import plotly.express as px
+
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
@@ -724,6 +726,167 @@ class Plate:
 
             # Add the rounded rectangle to the axis
             ax.add_patch(rounded_rectangle)
+
+        return fig
+    
+    def as_plotly_figure(
+        self,
+        annotation_metadata_key=None, 
+        color_metadata_key=None,
+        fontsize=14,
+        title_str=None,
+        title_fontsize=14,
+        alpha=0.7,
+        well_size=45,  # Adjusted for Plotly marker size
+        fig_width=1000,  # Adjusted for Plotly size in pixels
+        fig_height=700,  # Adjusted for Plotly size in pixels
+        colormap_continuous="Viridis",  # Default colormap in Plotly
+        colormap_discrete="D3",  # Default colormap in Plotly
+        text_rotation=0,
+        show_grid=True,
+        theme='plotly'
+    ):
+        """
+        Generates a Plotly scatter plot representing the data of a biological plate.
+
+        This function takes various parameters for customization of the plot such as colors, 
+        font sizes, title, and dimensions. It handles both continuous and discrete data types 
+        for coloring and allows annotations on each point in the scatter plot.
+
+        Args:
+            annotation_metadata_key (str, optional): Metadata key for annotations. 
+                Default is None.
+            color_metadata_key (str, optional): Metadata key for color mapping.
+                Default is None.
+            fontsize (int): Font size for annotations. Default is 14.
+            title_str (str, optional): Title of the plot. Default is None.
+            title_fontsize (int): Font size for the plot title. Default is 14.
+            alpha (float): Opacity level for markers. Default is 0.7.
+            well_size (int): Marker size. Default is 45.
+            fig_width (int): Width of the figure in pixels. Default is 1000.
+            fig_height (int): Height of the figure in pixels. Default is 700.
+            colormap_continuous (str): Colormap for continuous data. Default is "Viridis".
+            colormap_discrete (str): Colormap for discrete data. Default is "D3".
+            text_rotation (int): Rotation angle of text annotations. Default is 0.
+            show_grid (bool): Whether to show grid lines. Default is True.
+            theme (str): Plotly theme. Default is 'plotly'.
+
+        Returns:
+            plotly.graph_objs._scatter.Figure: A Plotly scatter plot figure.
+
+        Example:
+
+        ```python
+        plate = Plate()
+        fig = plate.as_plotly_figure(
+            annotation_metadata_key='gene_name',
+            color_metadata_key='expression_level',
+            fontsize=12,
+            title_str='Gene Expression Levels',
+            title_fontsize=16,
+            alpha=0.8,
+            well_size=50,
+            fig_width=1200,
+            fig_height=800,
+            colormap_continuous="Plasma",
+            text_rotation=45,
+            show_grid=False,
+            theme='plotly_dark'
+        )
+        fig.show()
+        ```
+
+        This example generates a scatter plot with gene names as annotations, colors representing
+        expression levels, customized font sizes, and a dark theme.
+
+        """
+
+        # Generate grid data for plotting, assuming equal spacing between wells
+        step = 1 
+        x = np.arange(0, len(self._columns)*step, step)
+        y = np.arange(0, len(self._rows)*step, step)
+        Xgrid, Ygrid = np.meshgrid(x, y)
+
+        # Transform the plate data into a DataFrame for easier manipulation
+        df = self.as_dataframe()
+
+        # Convert coordinate tuples to separate columns for x and y
+        df['column'] = df['coordinate'].apply(lambda c: step*c[1])
+        df['row'] = df['coordinate'].apply(lambda c: step*c[0])
+
+
+        # hover_data = ["name"] + list(plate[0].metadata.keys())
+        hover_data = ["name"] + list(self[0].metadata.keys())
+
+
+        # Determine color scale and plot type based on the data type of color_metadata_key
+        if df[color_metadata_key].dtype.kind in 'ifc':  # Numeric data - continuous
+            color_scale = colormap_continuous
+            fig = px.scatter(
+                df,
+                x='column',
+                y='row',
+                hover_data=hover_data,
+                color=color_metadata_key,
+                color_continuous_scale=color_scale,
+                # other parameters...
+            )
+        else:  # Categorical data - discrete
+            discrete_color_sequence = px.colors.qualitative.__getattribute__(colormap_discrete)
+            fig = px.scatter(
+                df,
+                x='column',
+                y='row',
+                hover_data=hover_data,
+                color=color_metadata_key,
+                color_discrete_sequence=discrete_color_sequence,
+                # other parameters...
+            )
+
+        # Add annotations to each well in the plate
+        for well in self:
+            fig.add_annotation(
+                x=Xgrid[well.coordinate],
+                y=Ygrid[well.coordinate],
+                text=str(well.get_attribute_or_metadata(annotation_metadata_key)),
+                textangle= -1*text_rotation,
+                showarrow=False,
+                # font=dict(size=fontsize, color="black"),
+                bgcolor='rgba(255, 255, 255, 0.75)'
+            )
+
+        fig.update_traces(marker=dict(size=well_size, line=dict(width=2), opacity=alpha), selector=dict(mode='markers'))
+        
+        # Adjust plot layout, axes, and other visual elements
+        fig.update_layout(
+            title=dict(text=title_str, font_size=title_fontsize),
+            width=fig_width,
+            height=fig_height,
+            xaxis=dict(
+                title="",
+                showgrid=show_grid, 
+                zeroline=False, 
+                showticklabels=True, 
+                tickmode="array",
+                tickvals=list(range(0, step*self._n_columns, step)),
+                ticktext=self.column_labels,
+                side="top",
+                tickfont=dict(size=18),
+                # range=[x[0] -x[1]*0.5, x[-1]+x[1]*0.5]
+            ),
+            yaxis=dict(
+                title="",
+                showgrid=show_grid, 
+                zeroline=False, 
+                showticklabels=True, 
+                tickmode="array",
+                tickvals=list(range(0, step*step*self._n_rows, step)),
+                ticktext=self.row_labels[::-1],
+                tickfont=dict(size=18),
+                # range=[y[0] -y[1]*0.5, y[-1]+y[1]*0.5]
+            ),
+            template=theme,
+        )
 
         return fig
     
