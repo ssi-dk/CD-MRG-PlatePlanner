@@ -2729,7 +2729,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-285"><a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">        &quot;&quot;&quot;</span>
 </span><span id="__span-0-286"><a id="__codelineno-0-286" name="__codelineno-0-286"></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wells</span><span class="p">)</span>
 </span><span id="__span-0-287"><a id="__codelineno-0-287" name="__codelineno-0-287"></a>
-</span><span id="__span-0-288"><a id="__codelineno-0-288" name="__codelineno-0-288"></a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-0-288"><a id="__codelineno-0-288" name="__codelineno-0-288"></a>    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 </span><span id="__span-0-289"><a id="__codelineno-0-289" name="__codelineno-0-289"></a>        <span class="n">plate_summary</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Plate ID: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">plate_id</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
 </span><span id="__span-0-290"><a id="__codelineno-0-290" name="__codelineno-0-290"></a>        <span class="n">plate_summary</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;Dimensions: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_rows</span><span class="si">}</span><span class="s2"> rows x </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_columns</span><span class="si">}</span><span class="s2"> columns</span><span class="se">\n</span><span class="s2">&quot;</span>
 </span><span id="__span-0-291"><a id="__codelineno-0-291" name="__codelineno-0-291"></a>        <span class="n">plate_summary</span> <span class="o">+=</span> <span class="s2">&quot;Plate Layout (Well Names):</span><span class="se">\n</span><span class="s2">&quot;</span>
@@ -2773,7 +2773,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-329"><a id="__codelineno-0-329" name="__codelineno-0-329"></a>        <span class="k">else</span><span class="p">:</span>
 </span><span id="__span-0-330"><a id="__codelineno-0-330" name="__codelineno-0-330"></a>            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Key must be an integer, tuple, or string&quot;</span><span class="p">)</span>
 </span><span id="__span-0-331"><a id="__codelineno-0-331" name="__codelineno-0-331"></a>
-</span><span id="__span-0-332"><a id="__codelineno-0-332" name="__codelineno-0-332"></a>    <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">well_object</span><span class="p">:</span> <span class="n">Well</span><span class="p">):</span>
+</span><span id="__span-0-332"><a id="__codelineno-0-332" name="__codelineno-0-332"></a>    <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">well_object</span><span class="p">:</span> <span class="n">Well</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-333"><a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-334"><a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">        Set or replace a well in the plate based on its index, coordinate, or name.</span>
 </span><span id="__span-0-335"><a id="__codelineno-0-335" name="__codelineno-0-335"></a>
@@ -2937,7 +2937,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-493"><a id="__codelineno-0-493" name="__codelineno-0-493"></a>
 </span><span id="__span-0-494"><a id="__codelineno-0-494" name="__codelineno-0-494"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unsupported plate format: Must be a tuple, list, dict, or integer.&quot;</span><span class="p">)</span>
 </span><span id="__span-0-495"><a id="__codelineno-0-495" name="__codelineno-0-495"></a>
-</span><span id="__span-0-496"><a id="__codelineno-0-496" name="__codelineno-0-496"></a>    <span class="k">def</span> <span class="nf">_coordinates_to_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coordinate</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">):</span>
+</span><span id="__span-0-496"><a id="__codelineno-0-496" name="__codelineno-0-496"></a>    <span class="k">def</span> <span class="nf">_coordinates_to_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coordinate</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 </span><span id="__span-0-497"><a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-498"><a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">        Convert a well coordinate to its corresponding index in the plate&#39;s well list.</span>
 </span><span id="__span-0-499"><a id="__codelineno-0-499" name="__codelineno-0-499"></a>
@@ -3035,7 +3035,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-591"><a id="__codelineno-0-591" name="__codelineno-0-591"></a>
 </span><span id="__span-0-592"><a id="__codelineno-0-592" name="__codelineno-0-592"></a>        <span class="k">return</span> <span class="n">metadata_values</span>
 </span><span id="__span-0-593"><a id="__codelineno-0-593" name="__codelineno-0-593"></a>
-</span><span id="__span-0-594"><a id="__codelineno-0-594" name="__codelineno-0-594"></a>    <span class="k">def</span> <span class="nf">get_metadata_as_numpy_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metadata_key</span> <span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span><span class="p">:</span>
+</span><span id="__span-0-594"><a id="__codelineno-0-594" name="__codelineno-0-594"></a>    <span class="k">def</span> <span class="nf">get_metadata_as_numpy_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metadata_key</span> <span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 </span><span id="__span-0-595"><a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-596"><a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">        Retrieve metadata values for all wells in a numpy array format based on the specified key.</span>
 </span><span id="__span-0-597"><a id="__codelineno-0-597" name="__codelineno-0-597"></a>
@@ -3121,7 +3121,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-677"><a id="__codelineno-0-677" name="__codelineno-0-677"></a>            <span class="k">for</span> <span class="n">well</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">wells</span><span class="p">:</span>
 </span><span id="__span-0-678"><a id="__codelineno-0-678" name="__codelineno-0-678"></a>                <span class="n">well</span><span class="o">.</span><span class="n">rgb_color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_well_color</span>
 </span><span id="__span-0-679"><a id="__codelineno-0-679" name="__codelineno-0-679"></a>
-</span><span id="__span-0-680"><a id="__codelineno-0-680" name="__codelineno-0-680"></a>    <span class="k">def</span> <span class="nf">as_records</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-0-680"><a id="__codelineno-0-680" name="__codelineno-0-680"></a>    <span class="k">def</span> <span class="nf">as_records</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
 </span><span id="__span-0-681"><a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-682"><a id="__codelineno-0-682" name="__codelineno-0-682"></a><span class="sd">        Convert the plate&#39;s well data into a list of dictionaries.</span>
 </span><span id="__span-0-683"><a id="__codelineno-0-683" name="__codelineno-0-683"></a>
@@ -3142,7 +3142,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-698"><a id="__codelineno-0-698" name="__codelineno-0-698"></a><span class="sd">        &quot;&quot;&quot;</span>
 </span><span id="__span-0-699"><a id="__codelineno-0-699" name="__codelineno-0-699"></a>        <span class="k">return</span> <span class="p">[</span><span class="n">well</span><span class="o">.</span><span class="n">as_dict</span><span class="p">()</span> <span class="k">for</span> <span class="n">well</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">]</span>
 </span><span id="__span-0-700"><a id="__codelineno-0-700" name="__codelineno-0-700"></a>
-</span><span id="__span-0-701"><a id="__codelineno-0-701" name="__codelineno-0-701"></a>    <span class="k">def</span> <span class="nf">as_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-0-701"><a id="__codelineno-0-701" name="__codelineno-0-701"></a>    <span class="k">def</span> <span class="nf">as_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 </span><span id="__span-0-702"><a id="__codelineno-0-702" name="__codelineno-0-702"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-703"><a id="__codelineno-0-703" name="__codelineno-0-703"></a><span class="sd">        Converts the plate data into a Pandas DataFrame.</span>
 </span><span id="__span-0-704"><a id="__codelineno-0-704" name="__codelineno-0-704"></a>
@@ -3655,7 +3655,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-1211"><a id="__codelineno-0-1211" name="__codelineno-0-1211"></a>            <span class="k">case</span> <span class="s2">&quot;xls&quot;</span><span class="p">:</span>
 </span><span id="__span-0-1212"><a id="__codelineno-0-1212" name="__codelineno-0-1212"></a>                <span class="n">df</span><span class="o">.</span><span class="n">to_excel</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </span><span id="__span-0-1213"><a id="__codelineno-0-1213" name="__codelineno-0-1213"></a>
-</span><span id="__span-0-1214"><a id="__codelineno-0-1214" name="__codelineno-0-1214"></a>    <span class="k">def</span> <span class="nf">add_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+</span><span id="__span-0-1214"><a id="__codelineno-0-1214" name="__codelineno-0-1214"></a>    <span class="k">def</span> <span class="nf">add_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-1215"><a id="__codelineno-0-1215" name="__codelineno-0-1215"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-1216"><a id="__codelineno-0-1216" name="__codelineno-0-1216"></a><span class="sd">        Add or update metadata for all wells in the plate. If a list of values is provided,</span>
 </span><span id="__span-0-1217"><a id="__codelineno-0-1217" name="__codelineno-0-1217"></a><span class="sd">        assign each value to the corresponding well. If a single value is provided, assign it to all wells.</span>
@@ -3687,7 +3687,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-1243"><a id="__codelineno-0-1243" name="__codelineno-0-1243"></a>                <span class="n">well</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
 </span><span id="__span-0-1244"><a id="__codelineno-0-1244" name="__codelineno-0-1244"></a>
 </span><span id="__span-0-1245"><a id="__codelineno-0-1245" name="__codelineno-0-1245"></a>    <span class="nd">@property</span>
-</span><span id="__span-0-1246"><a id="__codelineno-0-1246" name="__codelineno-0-1246"></a>    <span class="k">def</span> <span class="nf">row_labels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-0-1246"><a id="__codelineno-0-1246" name="__codelineno-0-1246"></a>    <span class="k">def</span> <span class="nf">row_labels</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
 </span><span id="__span-0-1247"><a id="__codelineno-0-1247" name="__codelineno-0-1247"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-1248"><a id="__codelineno-0-1248" name="__codelineno-0-1248"></a><span class="sd">        Get the row labels for the plate.</span>
 </span><span id="__span-0-1249"><a id="__codelineno-0-1249" name="__codelineno-0-1249"></a>
@@ -3705,7 +3705,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-1261"><a id="__codelineno-0-1261" name="__codelineno-0-1261"></a>        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">ascii_uppercase</span><span class="p">)[:</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rows</span><span class="p">)]</span>
 </span><span id="__span-0-1262"><a id="__codelineno-0-1262" name="__codelineno-0-1262"></a>
 </span><span id="__span-0-1263"><a id="__codelineno-0-1263" name="__codelineno-0-1263"></a>    <span class="nd">@property</span>
-</span><span id="__span-0-1264"><a id="__codelineno-0-1264" name="__codelineno-0-1264"></a>    <span class="k">def</span> <span class="nf">column_labels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-0-1264"><a id="__codelineno-0-1264" name="__codelineno-0-1264"></a>    <span class="k">def</span> <span class="nf">column_labels</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
 </span><span id="__span-0-1265"><a id="__codelineno-0-1265" name="__codelineno-0-1265"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-1266"><a id="__codelineno-0-1266" name="__codelineno-0-1266"></a><span class="sd">        Get the column labels for the plate.</span>
 </span><span id="__span-0-1267"><a id="__codelineno-0-1267" name="__codelineno-0-1267"></a>
@@ -3723,7 +3723,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-1279"><a id="__codelineno-0-1279" name="__codelineno-0-1279"></a>        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">row_id</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">row_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_columns</span><span class="p">]</span>
 </span><span id="__span-0-1280"><a id="__codelineno-0-1280" name="__codelineno-0-1280"></a>
 </span><span id="__span-0-1281"><a id="__codelineno-0-1281" name="__codelineno-0-1281"></a>    <span class="nd">@property</span>
-</span><span id="__span-0-1282"><a id="__codelineno-0-1282" name="__codelineno-0-1282"></a>    <span class="k">def</span> <span class="nf">capacity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-0-1282"><a id="__codelineno-0-1282" name="__codelineno-0-1282"></a>    <span class="k">def</span> <span class="nf">capacity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 </span><span id="__span-0-1283"><a id="__codelineno-0-1283" name="__codelineno-0-1283"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-1284"><a id="__codelineno-0-1284" name="__codelineno-0-1284"></a><span class="sd">        Get the number of samples that can be added to the plate, which is the same as the number of wells in this class</span>
 </span><span id="__span-0-1285"><a id="__codelineno-0-1285" name="__codelineno-0-1285"></a>
@@ -3735,7 +3735,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-1291"><a id="__codelineno-0-1291" name="__codelineno-0-1291"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span>
 </span><span id="__span-0-1292"><a id="__codelineno-0-1292" name="__codelineno-0-1292"></a>
 </span><span id="__span-0-1293"><a id="__codelineno-0-1293" name="__codelineno-0-1293"></a>    <span class="nd">@property</span>
-</span><span id="__span-0-1294"><a id="__codelineno-0-1294" name="__codelineno-0-1294"></a>    <span class="k">def</span> <span class="nf">plate_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-0-1294"><a id="__codelineno-0-1294" name="__codelineno-0-1294"></a>    <span class="k">def</span> <span class="nf">plate_id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 </span><span id="__span-0-1295"><a id="__codelineno-0-1295" name="__codelineno-0-1295"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-1296"><a id="__codelineno-0-1296" name="__codelineno-0-1296"></a><span class="sd">        Get the plate ID.</span>
 </span><span id="__span-0-1297"><a id="__codelineno-0-1297" name="__codelineno-0-1297"></a>
@@ -3752,7 +3752,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-1308"><a id="__codelineno-0-1308" name="__codelineno-0-1308"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plate_id</span>
 </span><span id="__span-0-1309"><a id="__codelineno-0-1309" name="__codelineno-0-1309"></a>
 </span><span id="__span-0-1310"><a id="__codelineno-0-1310" name="__codelineno-0-1310"></a>    <span class="nd">@plate_id</span><span class="o">.</span><span class="n">setter</span>
-</span><span id="__span-0-1311"><a id="__codelineno-0-1311" name="__codelineno-0-1311"></a>    <span class="k">def</span> <span class="nf">plate_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_id</span><span class="p">):</span>
+</span><span id="__span-0-1311"><a id="__codelineno-0-1311" name="__codelineno-0-1311"></a>    <span class="k">def</span> <span class="nf">plate_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-1312"><a id="__codelineno-0-1312" name="__codelineno-0-1312"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-1313"><a id="__codelineno-0-1313" name="__codelineno-0-1313"></a><span class="sd">        Set a new plate ID.</span>
 </span><span id="__span-0-1314"><a id="__codelineno-0-1314" name="__codelineno-0-1314"></a>
@@ -3800,7 +3800,7 @@ the wells, along with their metadata.</p>
 </span><span id="__span-0-1356"><a id="__codelineno-0-1356" name="__codelineno-0-1356"></a>                <span class="p">)</span>
 </span><span id="__span-0-1357"><a id="__codelineno-0-1357" name="__codelineno-0-1357"></a>
 </span><span id="__span-0-1358"><a id="__codelineno-0-1358" name="__codelineno-0-1358"></a>    <span class="nd">@staticmethod</span>
-</span><span id="__span-0-1359"><a id="__codelineno-0-1359" name="__codelineno-0-1359"></a>    <span class="k">def</span> <span class="nf">create_alphanumerical_coordinates</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
+</span><span id="__span-0-1359"><a id="__codelineno-0-1359" name="__codelineno-0-1359"></a>    <span class="k">def</span> <span class="nf">create_alphanumerical_coordinates</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">columns</span><span class="p">)</span> <span class="o">-&gt;</span>  <span class="nb">list</span><span class="p">:</span>
 </span><span id="__span-0-1360"><a id="__codelineno-0-1360" name="__codelineno-0-1360"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-1361"><a id="__codelineno-0-1361" name="__codelineno-0-1361"></a><span class="sd">        Static method to create alphanumerical coordinates for the wells.</span>
 </span><span id="__span-0-1362"><a id="__codelineno-0-1362" name="__codelineno-0-1362"></a>
@@ -3837,7 +3837,7 @@ the wells, along with their metadata.</p>
 
 
 <h3 id="src.plate_planner.plate.Plate.capacity" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">capacity</span></code>
+          <code class="highlight language-python"><span class="n">capacity</span><span class="p">:</span> <span class="nb">int</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
@@ -3870,7 +3870,7 @@ plate.capacity
 
 
 <h3 id="src.plate_planner.plate.Plate.column_labels" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">column_labels</span></code>
+          <code class="highlight language-python"><span class="n">column_labels</span><span class="p">:</span> <span class="nb">list</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
@@ -3898,6 +3898,7 @@ of the plate, based on the number of columns in the plate.</p>
     <tbody>
         <tr>
 <td><code>list</code></td>          <td>
+                <code>list</code>
           </td>
           <td>
             <div class="doc-md-description">
@@ -3928,7 +3929,7 @@ plate.column_labels
 
 
 <h3 id="src.plate_planner.plate.Plate.plate_id" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">plate_id</span></code>
+          <code class="highlight language-python"><span class="n">plate_id</span><span class="p">:</span> <span class="nb">int</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
@@ -3956,6 +3957,7 @@ plate.column_labels
     <tbody>
         <tr>
 <td><code>int</code></td>          <td>
+                <code>int</code>
           </td>
           <td>
             <div class="doc-md-description">
@@ -3986,7 +3988,7 @@ plate.plate_id
 
 
 <h3 id="src.plate_planner.plate.Plate.row_labels" class="doc doc-heading">
-          <code class="highlight language-python"><span class="n">row_labels</span></code>
+          <code class="highlight language-python"><span class="n">row_labels</span><span class="p">:</span> <span class="nb">list</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
@@ -4014,6 +4016,7 @@ of the plate, based on the number of rows in the plate.</p>
     <tbody>
         <tr>
 <td><code>list</code></td>          <td>
+                <code>list</code>
           </td>
           <td>
             <div class="doc-md-description">
@@ -4924,7 +4927,7 @@ plate[0].metadata["study_group"]
 <span class="normal"><a href="#__codelineno-0-381">381</a></span>
 <span class="normal"><a href="#__codelineno-0-382">382</a></span>
 <span class="normal"><a href="#__codelineno-0-383">383</a></span>
-<span class="normal"><a href="#__codelineno-0-384">384</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-332"><a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">well_object</span><span class="p">:</span> <span class="n">Well</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-384">384</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-332"><a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">well_object</span><span class="p">:</span> <span class="n">Well</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-333"><a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-334"><a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">    Set or replace a well in the plate based on its index, coordinate, or name.</span>
 </span><span id="__span-0-335"><a id="__codelineno-0-335" name="__codelineno-0-335"></a>
@@ -5089,7 +5092,7 @@ True</p>
 <span class="normal"><a href="#__codelineno-0-1240">1240</a></span>
 <span class="normal"><a href="#__codelineno-0-1241">1241</a></span>
 <span class="normal"><a href="#__codelineno-0-1242">1242</a></span>
-<span class="normal"><a href="#__codelineno-0-1243">1243</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1214"><a id="__codelineno-0-1214" name="__codelineno-0-1214"></a><span class="k">def</span> <span class="nf">add_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-1243">1243</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1214"><a id="__codelineno-0-1214" name="__codelineno-0-1214"></a><span class="k">def</span> <span class="nf">add_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="__span-0-1215"><a id="__codelineno-0-1215" name="__codelineno-0-1215"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-1216"><a id="__codelineno-0-1216" name="__codelineno-0-1216"></a><span class="sd">    Add or update metadata for all wells in the plate. If a list of values is provided,</span>
 </span><span id="__span-0-1217"><a id="__codelineno-0-1217" name="__codelineno-0-1217"></a><span class="sd">    assign each value to the corresponding well. If a single value is provided, assign it to all wells.</span>
@@ -5154,6 +5157,7 @@ True</p>
     <tbody>
         <tr>
           <td>
+                <code><span title="pandas.DataFrame">DataFrame</span></code>
           </td>
           <td>
             <div class="doc-md-description">
@@ -5192,7 +5196,7 @@ len(df)
 <span class="normal"><a href="#__codelineno-0-713">713</a></span>
 <span class="normal"><a href="#__codelineno-0-714">714</a></span>
 <span class="normal"><a href="#__codelineno-0-715">715</a></span>
-<span class="normal"><a href="#__codelineno-0-716">716</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-701"><a id="__codelineno-0-701" name="__codelineno-0-701"></a><span class="k">def</span> <span class="nf">as_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-716">716</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-701"><a id="__codelineno-0-701" name="__codelineno-0-701"></a><span class="k">def</span> <span class="nf">as_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 </span><span id="__span-0-702"><a id="__codelineno-0-702" name="__codelineno-0-702"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-703"><a id="__codelineno-0-703" name="__codelineno-0-703"></a><span class="sd">    Converts the plate data into a Pandas DataFrame.</span>
 </span><span id="__span-0-704"><a id="__codelineno-0-704" name="__codelineno-0-704"></a>
@@ -6728,6 +6732,7 @@ are compiled into a list, with one dictionary per well.</p>
     <tbody>
         <tr>
           <td>
+                <code><span title="typing.List">List</span>[dict]</code>
           </td>
           <td>
             <div class="doc-md-description">
@@ -6775,7 +6780,7 @@ sorted(records[0].keys())  # Show the keys of the first well's dictionary
 <span class="normal"><a href="#__codelineno-0-696">696</a></span>
 <span class="normal"><a href="#__codelineno-0-697">697</a></span>
 <span class="normal"><a href="#__codelineno-0-698">698</a></span>
-<span class="normal"><a href="#__codelineno-0-699">699</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-680"><a id="__codelineno-0-680" name="__codelineno-0-680"></a><span class="k">def</span> <span class="nf">as_records</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-699">699</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-680"><a id="__codelineno-0-680" name="__codelineno-0-680"></a><span class="k">def</span> <span class="nf">as_records</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
 </span><span id="__span-0-681"><a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-682"><a id="__codelineno-0-682" name="__codelineno-0-682"></a><span class="sd">    Convert the plate&#39;s well data into a list of dictionaries.</span>
 </span><span id="__span-0-683"><a id="__codelineno-0-683" name="__codelineno-0-683"></a>
@@ -6877,6 +6882,7 @@ sorted(records[0].keys())  # Show the keys of the first well's dictionary
     <tbody>
         <tr>
 <td><code>list</code></td>          <td>
+                <code>list</code>
           </td>
           <td>
             <div class="doc-md-description">
@@ -6922,7 +6928,7 @@ Plate.create_alphanumerical_coordinates([0], [0, 1])
 <span class="normal"><a href="#__codelineno-0-1375">1375</a></span>
 <span class="normal"><a href="#__codelineno-0-1376">1376</a></span>
 <span class="normal"><a href="#__codelineno-0-1377">1377</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1358"><a id="__codelineno-0-1358" name="__codelineno-0-1358"></a><span class="nd">@staticmethod</span>
-</span><span id="__span-0-1359"><a id="__codelineno-0-1359" name="__codelineno-0-1359"></a><span class="k">def</span> <span class="nf">create_alphanumerical_coordinates</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
+</span><span id="__span-0-1359"><a id="__codelineno-0-1359" name="__codelineno-0-1359"></a><span class="k">def</span> <span class="nf">create_alphanumerical_coordinates</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">columns</span><span class="p">)</span> <span class="o">-&gt;</span>  <span class="nb">list</span><span class="p">:</span>
 </span><span id="__span-0-1360"><a id="__codelineno-0-1360" name="__codelineno-0-1360"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-1361"><a id="__codelineno-0-1361" name="__codelineno-0-1361"></a><span class="sd">    Static method to create alphanumerical coordinates for the wells.</span>
 </span><span id="__span-0-1362"><a id="__codelineno-0-1362" name="__codelineno-0-1362"></a>
@@ -7319,7 +7325,7 @@ plate.get_metadata('non_existing_key')  # Key not present
     <tbody>
         <tr>
           <td>
-                <code>object</code>
+                <code><span title="numpy.ndarray">ndarray</span></code>
           </td>
           <td>
             <div class="doc-md-description">
@@ -7365,7 +7371,7 @@ plate.get_metadata('non_existing_key')  # Key not present
 <span class="normal"><a href="#__codelineno-0-614">614</a></span>
 <span class="normal"><a href="#__codelineno-0-615">615</a></span>
 <span class="normal"><a href="#__codelineno-0-616">616</a></span>
-<span class="normal"><a href="#__codelineno-0-617">617</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-594"><a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="k">def</span> <span class="nf">get_metadata_as_numpy_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metadata_key</span> <span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-617">617</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-594"><a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="k">def</span> <span class="nf">get_metadata_as_numpy_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metadata_key</span> <span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 </span><span id="__span-0-595"><a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="__span-0-596"><a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">    Retrieve metadata values for all wells in a numpy array format based on the specified key.</span>
 </span><span id="__span-0-597"><a id="__codelineno-0-597" name="__codelineno-0-597"></a>
