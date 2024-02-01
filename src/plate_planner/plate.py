@@ -5,7 +5,7 @@ import string
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
-from typing import Tuple, Union, Optional, Dict, Any, List
+from typing import Tuple, Union, Optional, Dict, Any, List, Iterator
 
 import numpy as np
 import pandas as pd
@@ -54,7 +54,7 @@ class Well:
     rgb_color: Tuple[float, float, float] = field(default_factory=lambda: (1, 1, 1))
     metadata: Dict[str, Any] = field(default_factory=dict)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Provide an unambiguous string representation of the Well object.
 
@@ -70,11 +70,11 @@ class Well:
                 f"coordinate={self.coordinate}, index={self.index}, "
                 f"empty={self.empty}, rgb_color={self.rgb_color}, metadata={self.metadata})")
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """
         Compare this Well object with another for equality.
 
-        Parameters:
+        Args:
             other (Well): Another Well object to compare with.
 
         Returns:
@@ -99,7 +99,7 @@ class Well:
                     and self.rgb_color == other.rgb_color and self.metadata == other.metadata)
         return False
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         """
         Converts the well object to a dictionary.
 
@@ -123,7 +123,7 @@ class Well:
 
         return attrib_dict
     
-    def get_attribute_or_metadata(self, key: str):
+    def get_attribute_or_metadata(self, key: str) -> Any:
         """
         Get the value of a direct attribute or a key in the metadata dictionary.
 
@@ -131,7 +131,7 @@ class Well:
         attribute of the well object. If not, it then checks if the key exists 
         in the metadata dictionary.
 
-        Parameters:
+        Args:
             key (str): The attribute name or metadata key.
 
         Returns:
@@ -155,7 +155,7 @@ class Well:
         return self.metadata.get(key, "NaN")
         # return self.metadata.get(key, "")
     
-    def set_attribute_or_metadata(self, key: str, value: Any):
+    def set_attribute_or_metadata(self, key: str, value: Any) -> None:
         """
         Set the value of a direct attribute or a key in the metadata dictionary.
 
@@ -163,7 +163,7 @@ class Well:
         attribute of the well object. If so, it sets the value of that attribute. 
         If not, it then updates or adds the key-value pair in the metadata dictionary.
 
-        Parameters:
+        Args:
             key (str): The attribute name or metadata key.
             value (Any): The value to be set for the attribute or metadata key.
 
@@ -211,7 +211,7 @@ class Plate:
         """
         Initialize a new Plate instance.
 
-        Parameters:
+        Args:
             plate_dim (Tuple[int, int], optional): The dimensions of the plate as (rows, columns).
                 If None, default dimensions are used.
             plate_id (int, optional): A unique identifier for the plate.
@@ -258,7 +258,7 @@ class Plate:
 
         logger.info(f"Created a {self._n_rows}x{self._n_columns} plate with {self.size} wells.")
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator:
         """
         Return an iterator over the wells of the plate.
 
@@ -271,7 +271,7 @@ class Plate:
         """
         return iter(self.wells)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         Returns the number of wells in the plate.
 
@@ -285,7 +285,7 @@ class Plate:
         """
         return len(self.wells)
     
-    def __str__(self):
+    def __str__(self) -> str:
         plate_summary = f"Plate ID: {self.plate_id}\n"
         plate_summary += f"Dimensions: {self._n_rows} rows x {self._n_columns} columns\n"
         plate_summary += "Plate Layout (Well Names):\n"
@@ -293,13 +293,12 @@ class Plate:
         plate_summary += plate_array_str
         return plate_summary
     
-    def __getitem__(self, key: Union[int, Tuple[int,int], str]):
+    def __getitem__(self, key: Union[int, Tuple[int,int], str]) -> Well:
         """
         Retrieve a well from the plate based on its index, coordinate, or name.
 
-        Parameters:
-            key (int, tuple, or str): The identifier for the well. Can be an integer index, 
-            a tuple indicating row and column coordinates, or a string specifying the well's name.
+        Args:
+            key (int, tuple, or str): The identifier for the well. Can be an integer index, a tuple indicating row and column coordinates, or a string specifying the well's name.
 
         Returns:
             Well: The well object corresponding to the given key.
@@ -330,14 +329,14 @@ class Plate:
         else:
             raise TypeError("Key must be an integer, tuple, or string")
         
-    def __setitem__(self, key, well_object: Well):
+    def __setitem__(self, key, well_object: Well) -> None:
         """
         Set or replace a well in the plate based on its index, coordinate, or name.
 
-        Parameters:
+        Args:
             key (int, tuple, or str): The identifier for the well to be set or replaced. 
                 Can be an integer index, a tuple indicating row and column coordinates, or a string specifying the well's name.
-        well_object (Well): The well object to set at the specified key.
+            well_object (Well): The well object to set at the specified key.
 
         Raises:
             ValueError: If the well_object is not an instance of Well.
@@ -391,7 +390,7 @@ class Plate:
         The wells of both plates are combined. If wells at the same coordinates 
         exist in both plates, their metadata is merged.
 
-        Parameters:
+        Args:
             other (Plate): Another Plate to combine with.
 
         Returns:
@@ -432,7 +431,7 @@ class Plate:
         'columns' keys, or as an integer representing the total number of wells in a plate. For integer inputs, 
         the method attempts to design a plate with a 2:3 aspect ratio (height to width).
 
-        Parameters:
+        Args:
             plate_dim (tuple, list, dict, or int): The dimensions of the plate. This can be a tuple or list specifying 
                 (rows, columns), a dictionary with 'rows' and 'columns' keys, or an integer specifying the total number 
                 of wells, which the method will attempt to fit into a plate with a 2:3 aspect ratio.
@@ -494,11 +493,11 @@ class Plate:
 
         raise ValueError("Unsupported plate format: Must be a tuple, list, dict, or integer.")
 
-    def _coordinates_to_index(self, coordinate: tuple):
+    def _coordinates_to_index(self, coordinate: tuple) -> int:
         """
         Convert a well coordinate to its corresponding index in the plate's well list.
 
-        Parameters:
+        Args:
             coordinate (tuple): The row and column coordinate of the well (row, col).
 
         Returns:
@@ -527,7 +526,7 @@ class Plate:
         """
         Convert a list of data corresponding to each well into a numpy array matching the plate's layout.
 
-        Parameters:
+        Args:
             data (list): A list of data values corresponding to each well in the plate.
 
         Returns:
@@ -565,7 +564,7 @@ class Plate:
         """
         Retrieve metadata values for all wells in the plate based on the specified key.
 
-        Parameters:
+        Args:
             metadata_key (str, optional): The metadata key for which values are to be retrieved. 
                 If None, a default value of 'NaN' is returned for each well.
 
@@ -592,11 +591,11 @@ class Plate:
 
         return metadata_values
 
-    def get_metadata_as_numpy_array(self, metadata_key : str) -> object:
+    def get_metadata_as_numpy_array(self, metadata_key : str) -> np.ndarray:
         """
         Retrieve metadata values for all wells in a numpy array format based on the specified key.
 
-        Parameters:
+        Args:
             metadata_key (str): The metadata key for which values are to be retrieved.
 
         Returns:
@@ -622,7 +621,7 @@ class Plate:
         """
         Assign colors to each well in the plate based on the specified metadata key and colormap.
         
-        Parameters:
+        Args:
             metadata_key (str, optional): The metadata key to use for coloring the wells. 
                 If None, a default color is assigned to each well.
         colormap (str): The name of the colormap to use for coloring the wells.
@@ -678,7 +677,7 @@ class Plate:
             for well in self.wells:
                 well.rgb_color = self._default_well_color
 
-    def as_records(self):
+    def as_records(self) -> List[dict]:
         """
         Convert the plate's well data into a list of dictionaries.
 
@@ -699,7 +698,7 @@ class Plate:
         """
         return [well.as_dict() for well in self]
 
-    def as_dataframe(self):
+    def as_dataframe(self) -> pd.DataFrame:
         """
         Converts the plate data into a Pandas DataFrame.
 
@@ -723,7 +722,7 @@ class Plate:
         This method verifies whether the specified key is either a direct attribute of the Well instances
         or a key within their metadata dictionary.
 
-        Parameters:
+        Args:
             key (str): The key to check for validity as a metadata key.
 
         Returns:
@@ -766,7 +765,7 @@ class Plate:
         This method generates a figure representing the plate, with options for annotations,
         coloring based on metadata, and various styling adjustments.
 
-        Parameters:
+        Args:
             annotation_metadata_key (str, optional): Metadata key to use for annotating wells.
             color_metadata_key (str, optional): Metadata key to determine the color of wells.
             fontsize (int, optional): Font size for annotations. Default is 8.
@@ -944,7 +943,9 @@ class Plate:
         colormap_discrete="D3",  # Default colormap in Plotly
         text_rotation=0,
         show_grid=True,
-        theme='plotly'
+        theme='plotly',
+        dark_mode=False,
+        marker_shape='circle'
     ) -> 'plotly.graph_objs._figure.Figure':
         """
         Generates a Plotly scatter plot representing the data of a biological plate.
@@ -1000,15 +1001,57 @@ class Plate:
         expression levels, customized font sizes, and a dark theme.
 
         """
+         # Transform the plate data into a DataFrame for easier manipulation
+        df = self.as_dataframe()
+
+        if dark_mode:
+            annotation_bg_color = 'rgba(10, 10, 10, 0.75)'
+            # annotation_font_color = "black"
+        else:
+            annotation_bg_color = 'rgba(255, 255, 255, 0.75)'
+
+        # Default values if parameters are not provided
+        if annotation_metadata_key is None:
+            annotation_metadata_key = 'name'
+        if color_metadata_key is None:
+            color_metadata_key = 'white'
+
+        if color_metadata_key == 'white':
+            df[color_metadata_key] = 'white' 
+
+
+        # Calculate the maximum size for each well
+        # Assuming margins are set or default
+        margins = dict(l=50, r=50, t=50, b=50, pad=4)  # Default margins, update if changed in your layout
+        available_width = fig_width - margins['l'] - margins['r']
+        available_height = fig_height - margins['t'] - margins['b']
+        
+        # Calculate space per well
+        space_per_well_x = available_width / self._n_columns
+        space_per_well_y = available_height / self._n_rows
+
+        # Set well size to be the minimum of the two, with a certain scaling factor
+        scaling_factor = 0.8  # Adjust this factor as needed
+        well_size = min(space_per_well_x, space_per_well_y) * scaling_factor
+
+        # Modify the plot based on marker_shape
+        marker_symbol = 'square' if marker_shape == 'square' else 'circle'
+
+        # Calculate the axis limits
+
+        # # Calculate the grid dimensions
+        step = 1 
+       
+         # Calculate the axis limits
+        x_axis_min = -0.5 * step
+        x_axis_max = self._n_columns * step - 0.5 * step
+        y_axis_min = -0.5 * step
+        y_axis_max = self._n_rows * step - 0.5 * step
 
         # Generate grid data for plotting, assuming equal spacing between wells
-        step = 1 
         x = np.arange(0, len(self._columns)*step, step)
         y = np.arange(0, len(self._rows)*step, step)
         Xgrid, Ygrid = np.meshgrid(x, y)
-
-        # Transform the plate data into a DataFrame for easier manipulation
-        df = self.as_dataframe()
 
         # Convert coordinate tuples to separate columns for x and y
         df['column'] = df['coordinate'].apply(lambda c: step*c[1])
@@ -1049,11 +1092,19 @@ class Plate:
                 text=str(well.get_attribute_or_metadata(annotation_metadata_key)),
                 textangle= -1*text_rotation,
                 showarrow=False,
-                # font=dict(size=fontsize, color="black"),
-                bgcolor='rgba(255, 255, 255, 0.75)'
+                # font=dict(size=fontsize, color=annotation_font_color),
+                bgcolor=annotation_bg_color
             )
 
-        fig.update_traces(marker=dict(size=well_size, line=dict(width=2), opacity=alpha), selector=dict(mode='markers'))
+        fig.update_traces(
+            marker=dict(
+                size=well_size,
+                line=dict(width=2),
+            opacity=alpha,
+            symbol=marker_symbol,
+            ),
+            selector=dict(mode='markers')
+        )
         
         # Adjust plot layout, axes, and other visual elements
         fig.update_layout(
@@ -1070,7 +1121,7 @@ class Plate:
                 ticktext=self.column_labels,
                 side="top",
                 tickfont=dict(size=18),
-                # range=[x[0] -x[1]*0.5, x[-1]+x[1]*0.5]
+                range=[x_axis_min, x_axis_max]
             ),
             yaxis=dict(
                 title="",
@@ -1081,10 +1132,27 @@ class Plate:
                 tickvals=list(range(0, step*step*self._n_rows, step)),
                 ticktext=self.row_labels[::-1],
                 tickfont=dict(size=18),
-                # range=[y[0] -y[1]*0.5, y[-1]+y[1]*0.5]
+                range=[y_axis_min, y_axis_max]
             ),
             template=theme,
+            legend=dict(
+                orientation="h",  # Horizontal orientation
+                yanchor="bottom",
+                y=-0.1,  # Adjust this value to move the legend up or down
+                xanchor="center",
+                x=0.5
+            ),
+            margin=margins,
         )
+
+        # # Make the layout responsive
+        # fig.update_layout(
+        #     autosize=True,
+        #     margin=dict(l=50, r=50, t=50, b=50, pad=4),  # Adjust margins as needed
+        #     # Remove fixed width and height, or set them to None
+        #     width=None,
+        #     height=None
+        # )
 
         return fig
     
@@ -1099,7 +1167,7 @@ class Plate:
         is specified, the file is saved in the current working directory with a default 
         name based on the plate ID.
 
-        Parameters:
+        Args:
             file_path (str, optional): The path where the file will be saved. 
                 If not specified, the file is saved in the current working directory.
             file_format (str, optional): The format of the file ('csv', 'tsv', 'xls').
@@ -1143,12 +1211,12 @@ class Plate:
             case "xls":
                 df.to_excel(file_path, index=False)
         
-    def add_metadata(self, key, values):
+    def add_metadata(self, key, values) -> None:
         """
         Add or update metadata for all wells in the plate. If a list of values is provided,
         assign each value to the corresponding well. If a single value is provided, assign it to all wells.
 
-        Parameters:
+        Args:
             key (str): The metadata key to add or update.
             values: A single value or a list of values to set for the given metadata key. 
 
@@ -1175,7 +1243,7 @@ class Plate:
                 well.metadata[key] = values
 
     @property
-    def row_labels(self):
+    def row_labels(self) -> list:
         """
         Get the row labels for the plate.
 
@@ -1193,7 +1261,7 @@ class Plate:
         return list(string.ascii_uppercase)[:len(self._rows)]
     
     @property
-    def column_labels(self):
+    def column_labels(self) -> list:
         """
         Get the column labels for the plate.
 
@@ -1211,7 +1279,7 @@ class Plate:
         return [str(row_id+1) for row_id in self._columns]
     
     @property
-    def capacity(self):
+    def capacity(self) -> int:
         """
         Get the number of samples that can be added to the plate, which is the same as the number of wells in this class
 
@@ -1223,7 +1291,7 @@ class Plate:
         return self.size
     
     @property
-    def plate_id(self):
+    def plate_id(self) -> int:
         """
         Get the plate ID.
 
@@ -1240,14 +1308,14 @@ class Plate:
         return self._plate_id
 
     @plate_id.setter
-    def plate_id(self, new_id):
+    def plate_id(self, new_id) -> None:
         """
         Set a new plate ID.
 
         This method updates the plate ID and propagates the change to all the wells 
         within the plate.
 
-        Parameters:
+        Args:
             new_id (int): The new plate ID to be set.
 
         Example:
@@ -1269,7 +1337,7 @@ class Plate:
         starting at the well in the top left. It is used to map the wells to their 
         respective positions in the plate.
 
-        Parameters:
+        Args:
             rows (iterable): An iterable representing the rows of the plate.
             columns (iterable): An iterable representing the columns of the plate.
 
@@ -1288,11 +1356,11 @@ class Plate:
                 )
     
     @staticmethod
-    def create_alphanumerical_coordinates(rows, columns):
+    def create_alphanumerical_coordinates(rows, columns) ->  list:
         """
         Static method to create alphanumerical coordinates for the wells.
 
-        Parameters:
+        Args:
             rows (list): A list of row indices.
             columns (list): A list of column indices.
 
@@ -1373,7 +1441,7 @@ class QCPlate(Plate):
         max_rounds = total_wells // qc_round_frequency
 
         # Step 1: Initialize sequence map
-        self.qc_sequence_map = {round_num: None for round_num in range(1, max_rounds + 1)}
+        self.qc_sequence_map = {round_num: [] for round_num in range(1, max_rounds + 1)}
 
         # Step 2: Apply specific round patterns
         for key, value in self.config['QC']['patterns'].items():
@@ -1381,89 +1449,116 @@ class QCPlate(Plate):
                 round_number = int(key.split('_')[1])
                 self.qc_sequence_map[round_number] = value
 
-        # Step 3: Apply start/end patterns
-        if 'start' in self.config['QC']['patterns']:
-            self.qc_sequence_map[1] = self.config['QC']['patterns']['start']
-        if 'end' in self.config['QC']['patterns']:
-            self.qc_sequence_map[max_rounds] = self.config['QC']['patterns']['end']
-
-        # Step 4: Apply repeat pattern
-        if 'repeat_pattern' in self.config['QC']['patterns']:
+        # Step 3: Apply repeat pattern
+        if 'repeat' in self.config['QC']['patterns']:
             repeat_config = self.config['QC']['patterns']['repeat_pattern']
             pattern, times = repeat_config['pattern'], repeat_config['times']
             for i in range(1, times + 1):
-                if self.qc_sequence_map[i] is None:
+                if not self.qc_sequence_map[i]:
                     self.qc_sequence_map[i] = pattern
 
-        # Step 5: Apply alternating patterns
-        if 'then_alternating' in self.config['QC']['patterns']:
-            alternating_patterns = self.config['QC']['patterns']['then_alternating']
+        # Step 4: Apply alternating patterns
+        if 'alternating' in self.config['QC']['patterns']:
+            alternating_patterns = self.config['QC']['patterns']['alternating']
             alt_index = 0
             for round_num in range(1, max_rounds + 1):
-                if self.qc_sequence_map[round_num] is None:
+                if not self.qc_sequence_map[round_num]: 
                     self.qc_sequence_map[round_num] = alternating_patterns[alt_index % len(alternating_patterns)]
                     alt_index += 1
 
-        # Step 6: Apply every N rounds patterns
-        every_n_patterns = {key: value for key, value in self.config['QC']['patterns'].items() if key.startswith('every_')}
-
-        for key, pattern in every_n_patterns.items():
-            # Correctly extract the frequency (e.g., 4 in 'every_4_rounds')
-            try:
-                frequency = int(''.join(filter(str.isdigit, key)))
-            except ValueError:
-                logger.error(f"Invalid frequency format in pattern key: {key}")
-                continue
-
-            for round_num in range(1, max_rounds + 1):
-                if round_num % frequency == 0 and self.qc_sequence_map[round_num] is None:
-                    self.qc_sequence_map[round_num] = pattern
 
         # Log the defined sequences
         for round_number, sequence in self.qc_sequence_map.items():
             logger.debug(f"Round {round_number}: {sequence}")
 
     def create_QC_plate_layout(self):
-        """ Creates the plate layout with QC and specimen samples. """
+        """
+        Creates the plate layout with QC and specimen samples based on the configuration provided.
+
+        This method initializes the QC sample placement according to the unique QC sequences defined for each round.
+        It iterates over all the wells in the plate, placing QC samples at the specified intervals and filling the
+        rest with specimen samples. The method handles the transition between different rounds of QC samples and ensures
+        that each well is assigned the correct sample type metadata.
+
+        The process accounts for special configurations such as starting the plate with a QC round and adjusts the
+        placement of QC and specimen samples accordingly. If the iterator of QC samples for a given round is exhausted,
+        the method transitions to the next round's sequence of QC samples.
+
+        Attributes:
+            None directly used, but utilizes class attributes such as self.config and self.size which are set during initialization.
+
+        Raises:
+            StopIteration: An exception is caught to indicate the end of a QC sample sequence for a round,
+                        triggering the transition to the next round or switching back to specimen sample assignment.
+        """
         logger.info("Creating dynamic plate layout with QC samples.")
 
         self.define_unique_QC_sequences()
 
-        # Initialize counters for QC sample types
+        # Initialize counters for QC sample types and control variables for round and specimen handling
         counts = {qc_type: 0 for qc_type in self.config["QC"]["names"].keys()}
-        
         round_counter = 1
         specimen_counter = 0
         qc_round_frequency = self.config['QC']['run_QC_after_n_specimens']
         start_with_qc = self.config['QC']['start_with_QC_round']
         current_round_qc_samples = iter(self.qc_sequence_map.get(round_counter, []))
 
-        for well_index in range(self.size):
+
+        # Start and End patterns have highest priority
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++
+        # Pre-allocate wells for 'start' pattern
+        start_pattern = self.config['QC']['patterns'].get('start', [])
+        for i, qc_sample in enumerate(start_pattern):
+            self.assign_qc_sample_metadata(i, qc_sample, counts)
+        
+        start_well_offset = len(start_pattern)
+        end_pattern = self.config['QC']['patterns'].get('end', [])
+        end_well_offset = len(end_pattern)
+
+        # Pre-allocate wells for 'end' pattern at the end of the plate
+        for i, qc_sample in enumerate(end_pattern):
+            self.assign_qc_sample_metadata(self.size - end_well_offset + i, qc_sample, counts)
+
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++
+        
+        current_round_qc_samples = iter(self.qc_sequence_map.get(round_counter, []))
+
+        # Adjust the loop to start and end accounting for 'start' and 'end' patterns
+        # for well_index in range(0, self.size - end_well_offset):
+        for well_index in range(start_well_offset, self.size - end_well_offset):
+        # for well_index in range(self.size):
+            # Handle the initial placement of QC samples if the configuration specifies starting with a QC round
             if start_with_qc and round_counter == 1:
                 try:
-                    # Place QC samples for the first round
+                    # Attempt to place a QC sample for the first round
                     qc_sample = next(current_round_qc_samples)
                     self.assign_qc_sample_metadata(well_index, qc_sample, counts)
-                    continue
+                    continue # Skip to the next iteration to continue placing QC samples
                 except StopIteration:
+                    # If no more QC samples are available for the current round, transition to the next round
                     round_counter += 1
                     current_round_qc_samples = iter(self.qc_sequence_map.get(round_counter, []))
 
+            # Check if it's time to place a QC sample based on the specified frequency
             if specimen_counter >= qc_round_frequency:
                 try:
+                    # Place a QC sample and reset the specimen counter for the next sequence
                     qc_sample = next(current_round_qc_samples)
                     self.assign_qc_sample_metadata(well_index, qc_sample, counts)
                 except StopIteration:
+                    # Transition to the next round of QC samples if available, or continue with specimen placement
                     round_counter += 1
-                    specimen_counter = 0
+                    specimen_counter = 0 # Reset specimen counter as we're starting a new QC round or specimen sequence
                     current_round_qc_samples = iter(self.qc_sequence_map.get(round_counter, []))
+                    # Place a specimen sample immediately if QC samples for the new round are exhausted or not defined
                     self.assign_specimen_sample_metadata(well_index, specimen_counter)
                     specimen_counter += 1
             else:
+                # Place a specimen sample and increment the counter
                 self.assign_specimen_sample_metadata(well_index, specimen_counter)
                 specimen_counter += 1
 
-        # Log the final layout
+        # Log the final layout for debugging
         for well in self.wells:
             logger.debug(f"Well {well.name}: {well.metadata}")
 
@@ -1480,6 +1575,52 @@ class QCPlate(Plate):
         self.wells[well_index].metadata["sample_code"] = self._non_qc_sample_code
         self.wells[well_index].metadata["sample_type"] = self._non_qc_sample_name
         self.wells[well_index].metadata["sample_name"] = f"{self._non_qc_sample_code}{count + 1}"
+
+    def as_plotly_figure(
+        self,
+        annotation_metadata_key="sample_code",  # Changed default value
+        color_metadata_key="sample_code",  # Changed default value
+        fontsize=14,
+        title_str=None,
+        title_fontsize=14,
+        alpha=0.7,
+        well_size=45,  # Adjusted for Plotly marker size
+        fig_width=1000,  # Adjusted for Plotly size in pixels
+        fig_height=700,  # Adjusted for Plotly size in pixels
+        colormap_continuous="Viridis",  # Default colormap in Plotly
+        colormap_discrete="D3",  # Default colormap in Plotly
+        text_rotation=0,
+        show_grid=True,
+        theme='plotly',
+        dark_mode=False,
+        marker_shape='circle'
+    ):
+        """
+        Generates a Plotly figure that visualizes the plate and optional metadata 
+
+        This method overrides the as_plotly_figure() from the Plate class to provide other defaults for annotaion and color based on QC and sample codes
+        """
+        # Call the superclass method with possibly modified default values
+        # Here, if annotation_metadata_key or color_metadata_key are not provided in the call,
+        # it uses the new defaults specified above
+        return super().as_plotly_figure(
+            annotation_metadata_key=annotation_metadata_key,
+            color_metadata_key=color_metadata_key,
+            fontsize=fontsize,
+            title_str=title_str,
+            title_fontsize=title_fontsize,
+            alpha=alpha,
+            well_size=well_size,
+            fig_width=fig_width,
+            fig_height=fig_height,
+            colormap_continuous=colormap_continuous,
+            colormap_discrete=colormap_discrete,
+            text_rotation=text_rotation,
+            show_grid=show_grid,
+            theme=theme,
+            dark_mode=dark_mode,
+            marker_shape=marker_shape
+        )
 
     @property
     def capacity(self):
@@ -1512,9 +1653,140 @@ class QCPlate(Plate):
         except FileNotFoundError:
             logger.error(f"Could not find/open config file {config_file}")
             
-            raise FileExistsError(config_file)            
+            raise FileExistsError(config_file)      
 
 
+class PlateFactory:
+        
+    @staticmethod
+    def validate_qc_scheme(scheme: Union[str, Dict]) -> Dict:
+        """
+        Validates the QC scheme configuration. If a file path is provided, the method
+        reads and validates the TOML configuration file. If a dictionary is provided,
+        it directly validates the configuration.
+
+        Validation checks include:
+        - Presence of essential sections and fields.
+        - Consistency of QC sample names across sections.
+        - Format and validity of specified patterns.
+
+        Args:
+            scheme (Union[str, Dict]): Path to the QC scheme TOML file or the scheme as a dictionary.
+
+        Returns:
+            Dict: The validated and parsed QC scheme configuration.
+
+        Raises:
+            FileNotFoundError: If the TOML file does not exist.
+            ValueError: If the configuration is invalid.
+        """
+        # Load configuration from file or use the provided dict
+        config = scheme
+        if isinstance(scheme, str):
+            scheme_path = Path(scheme)
+            if not scheme_path.exists():
+                raise FileNotFoundError(f"The configuration file '{scheme}' does not exist.")
+            with scheme_path.open('rb') as f:
+                config = tomli.load(f)
+
+        # Basic structure validation
+        if "QC" not in config or "patterns" not in config["QC"] or "names" not in config["QC"]:
+            raise ValueError("Invalid QC scheme configuration: Missing required sections.")
+
+        # Validate QC names
+        qc_names = config["QC"]["names"]
+        if not isinstance(qc_names, dict) or not qc_names:
+            raise ValueError("Invalid QC names configuration.")
+
+       # Validate patterns using QC names
+        patterns = config["QC"].get("patterns", {})
+        for pattern_name, pattern_value in patterns.items():
+            if isinstance(pattern_value, list):
+                # Check if the list contains lists (for patterns like 'alternating')
+                if pattern_value and isinstance(pattern_value[0], list):
+                    for sample_list in pattern_value:
+                        for sample_name in sample_list:
+                            if sample_name not in qc_names:
+                                raise ValueError(f"Undefined QC sample name '{sample_name}' in pattern '{pattern_name}'.")
+                else:
+                    # Validate each sample name in the list (for patterns like 'round_1')
+                    for sample_name in pattern_value:
+                        if sample_name not in qc_names:
+                            raise ValueError(f"Undefined QC sample name '{sample_name}' in pattern '{pattern_name}'.")
+            elif isinstance(pattern_value, dict) and 'pattern' in pattern_value and 'times' in pattern_value:
+                # Validate repeat pattern format
+                if not isinstance(pattern_value['pattern'], list) or not isinstance(pattern_value['times'], int):
+                    raise ValueError(f"Invalid format for repeat pattern '{pattern_name}'.")
+                for sample_name in pattern_value['pattern']:
+                    if sample_name not in qc_names:
+                        raise ValueError(f"Undefined QC sample name '{sample_name}' in repeat pattern '{pattern_name}'.")
+            else:
+                raise ValueError(f"Invalid pattern format for '{pattern_name}'.")
+
+        return config
+    
+    @staticmethod
+    def create_plate(*args, **kwargs) -> Plate:
+        """
+        Creates a plate object, deciding on the specific type of plate (SamplePlate or QCPlate)
+        based on the presence of a 'QC_config' argument.
+
+        If 'QC_config' is provided and not None, a QCPlate is created with the given QC configuration.
+        Otherwise, a SamplePlate is created. The method dynamically selects the appropriate constructor
+        based on the provided arguments.
+
+        Args:
+            *args: Positional arguments passed directly to the plate's constructor.
+            **kwargs: Keyword arguments passed directly to the plate's constructor. If 'QC_config' is
+                    among these keyword arguments and is not None, a QCPlate is instantiated. Otherwise,
+                    a SamplePlate is instantiated.
+
+        Returns:
+            Plate: An instance of either SamplePlate or QCPlate, depending on the provided arguments.
+
+        Raises:
+            Exception: If the QC scheme validation fails.
+
+        Examples:
+            >>> sample_plate = PlateFactory.create_plate(plate_dim=(8, 12))
+            >>> isinstance(sample_plate, SamplePlate)
+            True
+
+            >>> # Example QC configuration for testing purposes
+            >>> qc_config = {
+                        'QC': {
+                            'start_with_QC_round': False,
+                            'run_QC_after_n_specimens': 11,
+                            'names': {
+                                'EC': 'EC: External_Control_(matrix)',
+                                'PB': 'PB: Paper_Blank',
+                                'PO': 'PO: Pooled_specimens'
+                            },
+                            'patterns': {
+                                'alternating': [['EC', 'PB'], ['EC', 'PO']],
+                            }
+                        }
+                    }
+            >>> qc_plate = PlateFactory.create_plate(plate_dim=(8, 12), QC_config=qc_config)
+            >>> isinstance(qc_plate, QCPlate)
+            True
+
+            >>> # Creating a plate without specifying 'plate_dim', default dimensions should be used
+            >>> default_plate = PlateFactory.create_plate()
+            >>> isinstance(default_plate, SamplePlate)
+            True
+
+        """
+        if 'QC_config' in kwargs:
+            try:
+                qc_config = PlateFactory.validate_qc_scheme(kwargs['QC_config'])
+                # Replace the original QC_config with the validated version
+                kwargs['QC_config'] = qc_config
+                return QCPlate(*args, **kwargs)
+            except (FileNotFoundError, ValueError) as e:
+                raise Exception(f"Failed to validate QC scheme: {e}")
+        else:
+            return SamplePlate(*args, **kwargs)
 
 # @dataclass
 # class SampleWell(Well):
