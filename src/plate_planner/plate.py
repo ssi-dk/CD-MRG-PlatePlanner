@@ -4,6 +4,8 @@ import glob
 import string
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
+import warnings
+import json
 
 from typing import Tuple, Union, Optional, Dict, Any, List, Iterator
 
@@ -99,7 +101,7 @@ class Well:
                     and self.rgb_color == other.rgb_color and self.metadata == other.metadata)
         return False
 
-    def as_dict(self) -> dict:
+    def as_dict(self, flat=True) -> dict:
         """
         Converts the well object to a dictionary.
 
@@ -118,10 +120,35 @@ class Well:
 
         """
         attrib_dict = asdict(self)
-        del attrib_dict["metadata"]
-        attrib_dict.update(self.metadata)
+        if flat:
+            del attrib_dict["metadata"]
+            attrib_dict.update(self.metadata)
 
         return attrib_dict
+    
+    def json_to_well(json_str: str) -> 'Well':
+        """
+        Deserializes a JSON string back into a Well object.
+
+        Args:
+            json_str (str): The JSON string representation of a well.
+
+        Returns:
+            Well: The deserialized Well object.
+        """
+        well_dict = json.loads(json_str)
+        return Well(**well_dict)
+    
+    def as_json(self) -> str:
+            """
+            Serializes the Well object to a JSON string, preserving the structure of the metadata.
+            
+            Returns:
+                str: A JSON string representation of the well object.
+            """
+            # Directly use asdict for serialization since it preserves the structure of nested objects like metadata
+            well_dict = asdict(self)
+            return json.dumps(well_dict)
     
     def get_attribute_or_metadata(self, key: str) -> Any:
         """
@@ -1005,10 +1032,10 @@ class Plate:
         df = self.as_dataframe()
 
         if dark_mode:
-            annotation_bg_color = 'rgba(10, 10, 10, 0.75)'
+            annotation_bg_color = 'rgba(10, 10, 10, 0.5)'
             # annotation_font_color = "black"
         else:
-            annotation_bg_color = 'rgba(255, 255, 255, 0.75)'
+            annotation_bg_color = 'rgba(255, 255, 255, 0.5)'
 
         # Default values if parameters are not provided
         if annotation_metadata_key is None:
@@ -1092,8 +1119,10 @@ class Plate:
                 text=str(well.get_attribute_or_metadata(annotation_metadata_key)),
                 textangle= -1*text_rotation,
                 showarrow=False,
-                # font=dict(size=fontsize, color=annotation_font_color),
-                bgcolor=annotation_bg_color
+                # font=dict(size=fontsize),
+                bgcolor=annotation_bg_color,
+                borderpad=2,
+                bordercolor=annotation_bg_color
             )
 
         fig.update_traces(
@@ -1387,6 +1416,52 @@ class SamplePlate(Plate):
         for well in self.wells:
             well.metadata["sample_code"] = self._default_sample_code
             well.metadata["sample_name"] = self._default_sample_name
+
+    def as_plotly_figure(
+        self,
+        annotation_metadata_key="sample_code",  # Changed default value
+        color_metadata_key="sample_code",  # Changed default value
+        fontsize=14,
+        title_str=None,
+        title_fontsize=14,
+        alpha=0.7,
+        well_size=45,  # Adjusted for Plotly marker size
+        fig_width=1000,  # Adjusted for Plotly size in pixels
+        fig_height=700,  # Adjusted for Plotly size in pixels
+        colormap_continuous="Viridis",  # Default colormap in Plotly
+        colormap_discrete="D3",  # Default colormap in Plotly
+        text_rotation=0,
+        show_grid=True,
+        theme='plotly',
+        dark_mode=False,
+        marker_shape='circle'
+    ):
+        """
+        Generates a Plotly figure that visualizes the plate and optional metadata 
+
+        This method overrides the as_plotly_figure() from the Plate class to provide other defaults for annotaion and color based on QC and sample codes
+        """
+        # Call the superclass method with possibly modified default values
+        # Here, if annotation_metadata_key or color_metadata_key are not provided in the call,
+        # it uses the new defaults specified above
+        return super().as_plotly_figure(
+            annotation_metadata_key=annotation_metadata_key,
+            color_metadata_key=color_metadata_key,
+            fontsize=fontsize,
+            title_str=title_str,
+            title_fontsize=title_fontsize,
+            alpha=alpha,
+            well_size=well_size,
+            fig_width=fig_width,
+            fig_height=fig_height,
+            colormap_continuous=colormap_continuous,
+            colormap_discrete=colormap_discrete,
+            text_rotation=text_rotation,
+            show_grid=show_grid,
+            theme=theme,
+            dark_mode=dark_mode,
+            marker_shape=marker_shape
+        )
 
     
 # A plate with QC samples is a subclass of a Plate class
@@ -1784,7 +1859,11 @@ class PlateFactory:
                 kwargs['QC_config'] = qc_config
                 return QCPlate(*args, **kwargs)
             except (FileNotFoundError, ValueError) as e:
-                raise Exception(f"Failed to validate QC scheme: {e}")
+                # Issue a warning to the user
+                warnings.warn(f"Failed to validate QC scheme: {e}")
+                # Remove the 'QC_config' key from kwargs if validation fails
+                kwargs.pop('QC_config', None)  # Safely remove 'QC_config' without causing KeyError
+                return SamplePlate(*args, **kwargs)
         else:
             return SamplePlate(*args, **kwargs)
 
