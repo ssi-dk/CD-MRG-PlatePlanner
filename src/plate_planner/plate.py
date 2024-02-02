@@ -126,6 +126,25 @@ class Well:
 
         return attrib_dict
     
+    @staticmethod
+    def dict_to_well(well_dict: dict):
+        """
+        Converts a dictionary into a Well object.
+
+        Args:
+            well_dict (dict): A dictionary representing the well's attributes.
+
+        Returns:
+            Well: A Well object created from the dictionary.
+
+        Example:
+            >>> well_dict = {'name': 'A1', 'plate_id': 1, 'coordinate': (0, 0), 'index': 0, 'empty': True, 'rgb_color': (1, 1, 1), 'metadata': {}}
+            >>> Well.dict_to_well(well_dict).name
+            'A1'
+        """
+        return Well(**well_dict)
+    
+    @staticmethod
     def json_to_well(json_str: str) -> 'Well':
         """
         Deserializes a JSON string back into a Well object.
@@ -135,16 +154,27 @@ class Well:
 
         Returns:
             Well: The deserialized Well object.
+
+        Example:
+            >>> json_str = '{"name": "A1", "plate_id": 1, "coordinate": [0, 0], "index": 0, "empty": true, "rgb_color": [1, 1, 1], "metadata": {}}'
+            >>> Well.json_to_well(json_str).name
+            'A1'
         """
         well_dict = json.loads(json_str)
-        return Well(**well_dict)
+        return Well.dict_to_well(well_dict)
     
     def as_json(self) -> str:
             """
             Serializes the Well object to a JSON string, preserving the structure of the metadata.
-            
+
             Returns:
                 str: A JSON string representation of the well object.
+
+            Example:
+                >>> well = Well(name="A1", plate_id=1, coordinate=(0, 0), index=0, rgb_color=(1, 1, 1), metadata={})
+                >>> json_str = well.as_json()
+                >>> isinstance(json_str, str) and "A1" in json_str
+                True
             """
             # Directly use asdict for serialization since it preserves the structure of nested objects like metadata
             well_dict = asdict(self)
@@ -724,6 +754,73 @@ class Plate:
             ['coordinate', 'empty', 'index', 'name', 'plate_id', 'rgb_color', 'sample_type']
         """
         return [well.as_dict() for well in self]
+    
+    def as_json(self) -> str:
+        """
+        Serializes the entire Plate object to a JSON string, including all wells. This method
+        ensures that the serialized string includes the plate's ID, its dimensions, and a
+        full representation of each well within the plate.
+
+        Returns:
+            str: A JSON string representation of the plate.
+
+        Example:
+            >>> plate = Plate(plate_dim=(2, 2), plate_id=123)
+            >>> plate.wells[0].metadata['sample'] = 'Sample A'
+            >>> json_str = plate.as_json()
+            >>> isinstance(json_str, str) and '"plate_id": 123' in json_str
+            True
+            >>> '"sample": "Sample A"' in json_str
+            True
+        """
+        plate_data = {
+            "plate_id": self.plate_id,
+            "n_rows": self._n_rows,
+            "n_columns": self._n_columns,
+            # Use the as_json method from each Well object
+            "wells": [well.as_dict(flat=False) for well in self.wells]
+        }
+        # Serialize the plate data dictionary to JSON
+        return json.dumps(plate_data, indent=4)
+    
+    @staticmethod
+    def json_to_plate(json_str: str) -> 'Plate':
+        """
+        Deserializes a JSON string back into a Plate object, reconstructing all its wells
+        from their JSON representations. This method allows for the restoration of a Plate
+        object from its serialized form, including detailed well information.
+
+        Args:
+            json_str (str): The JSON string representation of a plate.
+
+        Returns:
+            Plate: The deserialized Plate object.
+
+        Example:
+            >>> json_str = '{"plate_id": 123, "n_rows": 2, "n_columns": 2, "wells": [{"name": "A1", "plate_id": 123, "coordinate": [0, 0], "index": 0, "empty": true, "rgb_color": [1, 1, 1], "metadata": {"sample": "Sample A"}}]}'
+            >>> plate = Plate.json_to_plate(json_str)
+            >>> plate.plate_id
+            123
+            >>> plate._n_rows
+            2
+            >>> len(plate.wells)
+            1
+            >>> plate.wells[0].metadata['sample']
+            'Sample A'
+        """
+        plate_data = json.loads(json_str)
+        # Instantiate a Plate with dimensions and ID but without initializing wells in __init__ method.
+        plate = Plate(plate_dim=(plate_data["n_rows"], plate_data["n_columns"]), plate_id=plate_data["plate_id"])
+
+        # Clear existing wells and repopulate from JSON data
+        plate.wells.clear()  # Ensure this list is empty before adding wells from JSON
+
+        # Deserialize each well using the updated static method Well.json_to_well
+        for well_data in plate_data["wells"]:
+            well = Well.dict_to_well(well_data)
+            plate.wells.append(well)
+
+        return plate
 
     def as_dataframe(self) -> pd.DataFrame:
         """
