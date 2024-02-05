@@ -1,0 +1,41 @@
+name: Build and Release on Version Change
+
+on:
+  push:
+    branches:
+      - main  # or your default branch
+    paths:
+      - 'src/plate_planner/__about__.py'  # Path to the file containing the version number
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'  # Adjust as needed
+
+    - name: Install dependencies
+      run: pip install hatchling
+
+    - name: Build with Hatch
+      run: hatch build
+
+    - name: Extract Version Number
+      id: get_version
+      run: |
+       VERSION=$(python -c "from src.plate_planner import __about__; print(__about__.__version__)")
+       echo "Extracted version $VERSION"
+       echo "::set-output name=VERSION::$VERSION"
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+         tag_name: ${{ steps.get_version.outputs.VERSION }}
+         name: Release ${{ steps.get_version.outputs.VERSION }}
+         body: 'Description of the release'
+      env:
+       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
