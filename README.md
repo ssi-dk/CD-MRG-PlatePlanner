@@ -2,6 +2,7 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/plate-planner.svg)](https://pypi.org/project/plate-planner)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/plate-planner.svg)](https://pypi.org/project/plate-planner)
 [![pages-build-deployment](https://github.com/ssi-dk/CD-MRG-PlatePlanner/actions/workflows/pages/pages-build-deployment/badge.svg?branch=main)](https://github.com/ssi-dk/CD-MRG-PlatePlanner/actions/workflows/pages/pages-build-deployment)
+[![.github/workflows/draft-pdf.yml](https://github.com/ssi-dk/CD-MRG-PlatePlanner/actions/workflows/draft-pdf.yml/badge.svg)](https://github.com/ssi-dk/CD-MRG-PlatePlanner/actions/workflows/draft-pdf.yml)
 [![.github/workflows/publish-to-pypi](https://github.com/ssi-dk/CD-MRG-PlatePlanner/actions/workflows/publish-to-pypi.yml/badge.svg)](https://github.com/ssi-dk/CD-MRG-PlatePlanner/actions/workflows/publish-to-pypi.yml)
 -----
 
