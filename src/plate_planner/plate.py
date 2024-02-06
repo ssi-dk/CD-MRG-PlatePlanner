@@ -617,6 +617,29 @@ class Plate:
 
         return np.flipud(plate_array)  # Flip to match the physical layout
     
+    def summary_dict(self) -> Dict[str, Any]:
+        """
+        Outputs a summary dictionary with specific details of the plate.
+
+        Returns:
+            A dictionary with keys:
+            - size: Total size of the plate.
+            - dimensions: String representation of plate dimensions.
+            - total_number_of_wells_with_sample_code_S: Number of wells with sample_code "S".
+            - unique_sample_codes: A list of unique sample codes in the plate.
+        """
+        summary = {
+            "size": self.size,
+            "dimensions": f"{self._n_rows}x{self._n_columns}",
+            "analytical samples capacity": sum(
+                1 for well in self.wells if well.metadata.get("sample_code") == "S"
+            ),
+            "sample_codes": list({
+                well.metadata.get("sample_code") for well in self.wells
+            }),
+        }
+        return summary
+    
     def get_metadata(self, metadata_key: Optional[str]) -> list:
         """
         Retrieve metadata values for all wells in the plate based on the specified key.
@@ -766,7 +789,7 @@ class Plate:
             "plate_id": self.plate_id,
             "n_rows": self._n_rows,
             "n_columns": self._n_columns,
-            "wells": [well.as_dict() for well in self.wells]  # Ensure Well has an as_dict method
+            "wells": [well.as_dict(flat=False) for well in self.wells]  # Ensure Well has an as_dict method
         }
     
     def as_json(self) -> str:
@@ -1059,7 +1082,6 @@ class Plate:
             ax.xaxis.grid(color=grid_color, linestyle='none',)
             ax.yaxis.grid(color=grid_color, linestyle='none',)
 
-        
         # ax.set_xlim(minX - maxX*0.08, maxX - maxX*0.035)
         ax.set_ylim(minY - maxY*0.07, maxY - maxY*0.07)
 
@@ -1215,8 +1237,6 @@ class Plate:
 
         # Modify the plot based on marker_shape
         marker_symbol = 'square' if marker_shape == 'square' else 'circle'
-
-        # Calculate the axis limits
 
         # # Calculate the grid dimensions
         step = 1 
