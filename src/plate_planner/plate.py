@@ -755,6 +755,20 @@ class Plate:
         """
         return [well.as_dict() for well in self]
     
+    def as_dict(self) -> dict:
+        """
+        Converts the Plate object and its contained Well objects into a dictionary.
+
+        Returns:
+            dict: A dictionary representation of the Plate object.
+        """
+        return {
+            "plate_id": self.plate_id,
+            "n_rows": self._n_rows,
+            "n_columns": self._n_columns,
+            "wells": [well.as_dict() for well in self.wells]  # Ensure Well has an as_dict method
+        }
+    
     def as_json(self) -> str:
         """
         Serializes the entire Plate object to a JSON string, including all wells. This method
@@ -773,15 +787,56 @@ class Plate:
             >>> '"sample": "Sample A"' in json_str
             True
         """
-        plate_data = {
-            "plate_id": self.plate_id,
-            "n_rows": self._n_rows,
-            "n_columns": self._n_columns,
-            # Use the as_json method from each Well object
-            "wells": [well.as_dict(flat=False) for well in self.wells]
-        }
+        
+        plate_dict = self.as_dict()  # Use the as_dict method to get a serializable representation
+
         # Serialize the plate data dictionary to JSON
-        return json.dumps(plate_data, indent=4)
+        return json.dumps(plate_dict, indent=4)
+    
+    @staticmethod
+    def dict_to_plate(plate_data: dict) -> 'Plate':
+        """
+        Deserializes a dictionary back into a Plate object, reconstructing all its wells
+        from their dictionary representations. This method facilitates the restoration of a Plate
+        object from its serialized form stored as a dictionary, including detailed well information.
+
+        Args:
+            plate_data (dict): The dictionary representation of a plate.
+
+        Returns:
+            Plate: The deserialized Plate object.
+
+        Example:
+            >>> plate_data = {
+            ...     "plate_id": 123, 
+            ...     "n_rows": 2, 
+            ...     "n_columns": 2, 
+            ...     "wells": [
+            ...         {"name": "A1", "plate_id": 123, "coordinate": (0, 0), "index": 0, "empty": True, "rgb_color": (1, 1, 1), "metadata": {"sample": "Sample A"}}
+            ...     ]
+            ... }
+            >>> plate = Plate.dict_to_plate(plate_data)
+            >>> plate.plate_id
+            123
+            >>> plate._n_rows
+            2
+            >>> len(plate.wells)
+            1
+            >>> plate.wells[0].metadata['sample']
+            'Sample A'
+        """
+        # Instantiate a Plate with dimensions and ID but without initializing wells in __init__ method.
+        plate = Plate(plate_dim=(plate_data["n_rows"], plate_data["n_columns"]), plate_id=plate_data["plate_id"])
+
+        # Clear existing wells and repopulate from the dictionary data
+        plate.wells.clear()  # Ensure this list is empty before adding wells from the dictionary
+
+        # Deserialize each well using the appropriate method (assuming Well.dict_to_well exists and works correctly)
+        for well_data in plate_data["wells"]:
+            well = Well.dict_to_well(well_data)
+            plate.wells.append(well)
+
+        return plate
     
     @staticmethod
     def json_to_plate(json_str: str) -> 'Plate':
@@ -1482,7 +1537,7 @@ class Plate:
                 )
     
     @staticmethod
-    def create_alphanumerical_coordinates(rows, columns) ->  list:
+    def create_alphanumerical_coordinates(rows:list, columns: list) ->  list:
         """
         Static method to create alphanumerical coordinates for the wells.
 
