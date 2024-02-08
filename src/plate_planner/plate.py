@@ -631,7 +631,7 @@ class Plate:
         summary = {
             "size": self.size,
             "dimensions": f"{self._n_rows}x{self._n_columns}",
-            "analytical samples capacity": sum(
+            "analytical_samples_capacity": sum(
                 1 for well in self.wells if well.metadata.get("sample_code") == "S"
             ),
             "sample_codes": list({
@@ -816,90 +816,6 @@ class Plate:
         # Serialize the plate data dictionary to JSON
         return json.dumps(plate_dict, indent=4)
     
-    @staticmethod
-    def dict_to_plate(plate_data: dict) -> 'Plate':
-        """
-        Deserializes a dictionary back into a Plate object, reconstructing all its wells
-        from their dictionary representations. This method facilitates the restoration of a Plate
-        object from its serialized form stored as a dictionary, including detailed well information.
-
-        Args:
-            plate_data (dict): The dictionary representation of a plate.
-
-        Returns:
-            Plate: The deserialized Plate object.
-
-        Example:
-            >>> plate_data = {
-            ...     "plate_id": 123, 
-            ...     "n_rows": 2, 
-            ...     "n_columns": 2, 
-            ...     "wells": [
-            ...         {"name": "A1", "plate_id": 123, "coordinate": (0, 0), "index": 0, "empty": True, "rgb_color": (1, 1, 1), "metadata": {"sample": "Sample A"}}
-            ...     ]
-            ... }
-            >>> plate = Plate.dict_to_plate(plate_data)
-            >>> plate.plate_id
-            123
-            >>> plate._n_rows
-            2
-            >>> len(plate.wells)
-            1
-            >>> plate.wells[0].metadata['sample']
-            'Sample A'
-        """
-        # Instantiate a Plate with dimensions and ID but without initializing wells in __init__ method.
-        plate = Plate(plate_dim=(plate_data["n_rows"], plate_data["n_columns"]), plate_id=plate_data["plate_id"])
-
-        # Clear existing wells and repopulate from the dictionary data
-        plate.wells.clear()  # Ensure this list is empty before adding wells from the dictionary
-
-        # Deserialize each well using the appropriate method (assuming Well.dict_to_well exists and works correctly)
-        for well_data in plate_data["wells"]:
-            well = Well.dict_to_well(well_data)
-            plate.wells.append(well)
-
-        return plate
-    
-    @staticmethod
-    def json_to_plate(json_str: str) -> 'Plate':
-        """
-        Deserializes a JSON string back into a Plate object, reconstructing all its wells
-        from their JSON representations. This method allows for the restoration of a Plate
-        object from its serialized form, including detailed well information.
-
-        Args:
-            json_str (str): The JSON string representation of a plate.
-
-        Returns:
-            Plate: The deserialized Plate object.
-
-        Example:
-            >>> json_str = '{"plate_id": 123, "n_rows": 2, "n_columns": 2, "wells": [{"name": "A1", "plate_id": 123, "coordinate": [0, 0], "index": 0, "empty": true, "rgb_color": [1, 1, 1], "metadata": {"sample": "Sample A"}}]}'
-            >>> plate = Plate.json_to_plate(json_str)
-            >>> plate.plate_id
-            123
-            >>> plate._n_rows
-            2
-            >>> len(plate.wells)
-            1
-            >>> plate.wells[0].metadata['sample']
-            'Sample A'
-        """
-        plate_data = json.loads(json_str)
-        # Instantiate a Plate with dimensions and ID but without initializing wells in __init__ method.
-        plate = Plate(plate_dim=(plate_data["n_rows"], plate_data["n_columns"]), plate_id=plate_data["plate_id"])
-
-        # Clear existing wells and repopulate from JSON data
-        plate.wells.clear()  # Ensure this list is empty before adding wells from JSON
-
-        # Deserialize each well using the updated static method Well.json_to_well
-        for well_data in plate_data["wells"]:
-            well = Well.dict_to_well(well_data)
-            plate.wells.append(well)
-
-        return plate
-
     def as_dataframe(self) -> pd.DataFrame:
         """
         Converts the plate data into a Pandas DataFrame.
@@ -1904,7 +1820,7 @@ class QCPlate(Plate):
 
 
 class PlateFactory:
-        
+
     @staticmethod
     def validate_qc_scheme(scheme: Union[str, Dict]) -> Dict:
         """
@@ -1971,7 +1887,7 @@ class PlateFactory:
                 raise ValueError(f"Invalid pattern format for '{pattern_name}'.")
 
         return config
-    
+
     @staticmethod
     def create_plate(*args, **kwargs) -> Plate:
         """
@@ -2038,6 +1954,78 @@ class PlateFactory:
                 return SamplePlate(*args, **kwargs)
         else:
             return SamplePlate(*args, **kwargs)
+        
+    @staticmethod
+    def dict_to_plate(plate_data: dict) -> Plate:
+        """
+        Deserializes a dictionary back into a Plate object, deciding on the specific type
+        of plate (Plate, SamplePlate, or QCPlate) based on the presence of QC metadata.
+
+        The method inspects the dictionary for keys or structures indicative of QC metadata.
+        If found, it returns an instance of QCPlate; otherwise, it defaults to returning a
+        SamplePlate or a generic Plate, depending on the nature of the data provided.
+
+        Args:
+            plate_data (dict): The dictionary representation of a plate.
+
+        Returns:
+            Plate: The deserialized Plate object.
+
+        Examples:
+            >>> plate_data_sample = {
+                    "plate_id": 1,
+                    "n_rows": 8,
+                    "n_columns": 12,
+                    "wells": [{"name": "A1", "metadata": {"sample_code": "S1"}}]
+                }
+            >>> plate_sample = PlateFactory.dict_to_plate(plate_data_sample)
+            >>> isinstance(plate_sample, SamplePlate)
+            True
+
+            >>> plate_data_qc = {
+                    "plate_id": 2,
+                    "n_rows": 8,
+                    "n_columns": 12,
+                    "wells": [{"name": "A1", "metadata": {"QC": True, "sample_code": "QC1"}}],
+                    "QC_config": {"QC": {"patterns": {"start": ["QC1"], "end": ["QC2"]}, "names": {"QC1": "Quality Control 1", "QC2": "Quality Control 2"}}}
+                }
+            >>> plate_qc = PlateFactory.dict_to_plate(plate_data_qc)
+            >>> isinstance(plate_qc, QCPlate)
+            True
+        """
+        # Check if the plate data contains QC metadata
+        contains_qc_metadata = any("QC" in well.get("metadata", {}) for well in plate_data.get("wells", []))
+
+        # Determine the plate dimensions
+        n_rows = plate_data.get("n_rows", Plate._default_n_rows)
+        n_columns = plate_data.get("n_columns", Plate._default_n_columns)
+        plate_id = plate_data.get("plate_id", 1)
+
+        if contains_qc_metadata:
+            # Instantiate a QCPlate with dimensions and ID but without initializing wells in __init__ method.
+            plate = QCPlate(plate_dim=(n_rows, n_columns), plate_id=plate_id)
+
+            # Assuming the presence of a 'QC_config' in plate_data to configure QCPlate
+            # If 'QC_config' is not directly available, the method or an attribute could be adapted to derive it from the well metadata.
+            if "QC_config" in plate_data:
+                qc_config = plate_data["QC_config"]
+                plate.config = PlateFactory.validate_qc_scheme(qc_config)
+                plate.create_QC_plate_layout()
+        else:
+            # Default to SamplePlate if no specific QC configuration is detected
+            plate = SamplePlate(plate_dim=(n_rows, n_columns), plate_id=plate_id)
+
+        # Clear existing wells and repopulate from the dictionary data
+        plate.wells.clear()
+
+        # Deserialize each well using the appropriate method
+        for well_data in plate_data.get("wells", []):
+            well = Well.dict_to_well(well_data)
+            plate.wells.append(well)
+
+        return plate
+    
+
 
 # @dataclass
 # class SampleWell(Well):
