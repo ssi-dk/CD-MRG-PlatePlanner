@@ -1,6 +1,8 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 
+import dash_ag_grid as dag
+
 import plotly.graph_objects as go
 
 # component IDs
@@ -239,7 +241,7 @@ design_tab = html.Div(
                         [
                             dbc.Input(
                                 id=DashIdPlateDesigner.NAME_INPUT.value,
-                                value="Sample plate"
+                                value="StudyX"
                             )
                         ],
                         # sm=12, md="auto"
@@ -320,8 +322,117 @@ design_tab = html.Div(
 
 library_tab = html.Div(lib_layout)
 
+
+### Plate preview
+plate_design_fig_tab = html.Div(
+    [
+        dbc.Spinner(
+            children=html.Div(
+                dcc.Graph(
+                    id=DashIdPlateDesigner.PREVIEW_GRAPH.value,
+                    figure=go.Figure(),
+                    responsive=True,
+                    style={"width":"750px", "height": "500px"}
+                )
+            ),
+            type="grow",
+            color="secondary"
+        ),
+        dbc.Row(
+            [
+                dbc.Label("Color", width="auto"),
+                dbc.Col(
+                    [
+                        dbc.Select(
+                            id=DashIdPlateDesigner.COLOR_SELECT.value,
+                            options=COLOR_OPTIONS,
+                            value=COLOR_OPTION_DEFAULT
+                        )
+                    ],                                    
+                ),
+                dbc.Label("Label", width="auto"),
+                dbc.Col(
+                    [
+                        dbc.Select(
+                            id=DashIdPlateDesigner.LABEL_SELECT.value,
+                            options=LABEL_OPTIONS,
+                            value=LABEL_OPTION_DEFAULT
+                        )
+                    ],
+                )
+            ],
+            className="ms-4 me-4",
+            style={"width": "700px"}
+        )
+    ]
+)
+
+### table
+column_defs = [
+    {
+        "headerName": "Well Index",
+        "field": "index"
+    },
+    {
+        "headerName": "Well",
+        "field": "name"
+    },
+    {
+        "headerName": "Sample Type",
+        "field": "sample_type"
+    },
+        {
+        "headerName": "Sample Code",
+        "field": "sample_code"
+    }
+]
+
+plate_preview_dag = dag.AgGrid(
+    id=DashIdPlateDesigner.PREVIEW_DAG.value,
+    rowData=[],
+    columnSize="responsiveSizeToFit",
+
+    dashGridOptions={
+        "rowSelection": "single",
+    },
+
+    columnDefs=column_defs,
+
+    className="dbc ag-theme-alpine ag-theme-alpine2",
+
+    style={"width": "100%", "height": "50vh"},
+)
+
+plate_design_table_tab = html.Div(
+    [
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        plate_preview_dag
+                    ]
+                )
+            ],
+            
+        ),
+        
+    ]
+)
+
+
+### MAIN
 designer_layout = html.Div(
     [
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.H4("Plate templates"),
+                    ]
+                )
+            ],
+            className="mt-2 ms-4 me-4"
+        ),
         dbc.Row(
             [
                 dbc.Col(
@@ -337,39 +448,12 @@ designer_layout = html.Div(
                 ),
                 dbc.Col(
                     [
-                        dbc.Spinner(html.Div(
-                            dcc.Graph(
-                                id=DashIdPlateDesigner.PREVIEW_GRAPH.value,
-                                figure=go.Figure(),
-                                responsive=True,
-                                style={"width":"750px", "height": "500px"}
-                            )
-                        ), type="grow", color="secondary"),
-                        dbc.Row(
+                        dbc.Tabs(
                             [
-                                dbc.Label("Color", width="auto"),
-                                dbc.Col(
-                                    [
-                                        dbc.Select(
-                                            id=DashIdPlateDesigner.COLOR_SELECT.value,
-                                            options=COLOR_OPTIONS,
-                                            value=COLOR_OPTION_DEFAULT
-                                        )
-                                    ],                                    
-                                ),
-                                dbc.Label("Label", width="auto"),
-                                dbc.Col(
-                                    [
-                                        dbc.Select(
-                                            id=DashIdPlateDesigner.LABEL_SELECT.value,
-                                            options=LABEL_OPTIONS,
-                                            value=LABEL_OPTION_DEFAULT
-                                        )
-                                    ],
-                                )
+                                dbc.Tab(label="Figure", children=plate_design_fig_tab),
+                                dbc.Tab(label="Table", children=plate_design_table_tab),
                             ],
-                            className="ms-4 me-4",
-                            style={"width": "700px"}
+                            # className="mt-2"
                         )
                     ],
                     sm=12, md=12, xl=6

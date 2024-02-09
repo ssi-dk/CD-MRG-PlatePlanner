@@ -1,15 +1,20 @@
+import base64
+from io import StringIO, BytesIO
+
 from dash import Input, Output, State, no_update, callback_context, MATCH, ALL
 from dash import dcc, html
 
 from dash.exceptions import PreventUpdate
 
-from plate_planner.plate import PlateFactory, Plate
+from plate_planner.plate import PlateFactory
 
 import dash_bootstrap_components as dbc
 from dash_bootstrap_templates import load_figure_template
 
+import pandas as pd
+
 # components ids
-from app.component_ids.component_ids import DashIdPlateDesigner, DashIdMisc, DashIdStore
+from app.component_ids.component_ids import DashIdPlateDesigner, DashIdMisc, DashIdStore, DashIdPlateLib, DashIdStudy
 
 
 load_figure_template(["journal", "journal_dark"])
@@ -358,7 +363,7 @@ def register_callbacks(app):
         if not callback_context.triggered:
             raise PreventUpdate
         
-        current_plate_design = Plate.json_to_plate(plate_json)
+        current_plate_design = PlateFactory.dict_to_plate(plate_json)
 
         default_position = len(start_round_rows)  + 1
 
@@ -486,7 +491,7 @@ def register_callbacks(app):
         if not callback_context.triggered:
             raise PreventUpdate
         
-        current_plate_design = Plate.json_to_plate(plate_json)
+        current_plate_design = PlateFactory.dict_to_plate(plate_json)
 
         position_options = []
         for label, value in  zip(current_plate_design._alphanumerical_coordinates[::-1], range(1, current_plate_design.capacity+1)):
@@ -726,6 +731,7 @@ def register_callbacks(app):
     @app.callback(
         [
             Output(DashIdPlateDesigner.PREVIEW_GRAPH.value, "figure", allow_duplicate=True),
+            Output(DashIdPlateDesigner.PREVIEW_DAG.value, "rowData"),
 
             Output(DashIdPlateDesigner.SIZE_SELECT.value, "value"),
             Output(DashIdPlateDesigner.SIZE_SELECT.value, "options"),
@@ -733,10 +739,21 @@ def register_callbacks(app):
             Output(DashIdPlateDesigner.N_ROWS_SELECT.value, "value"),
             Output(DashIdPlateDesigner.N_COLUMNS_SELECT.value, "value"),
 
-            # Output(DashIdStore.CURRENT_PLATE_DESIGN.value, "data")
+            Output(DashIdStore.PLATE_LIBRARY.value, "data"),
+
+            Output(DashIdPlateLib.PLATE_LIB_DAG.value, "rowData"),
+
+            Output(DashIdStore.CURRENT_PLATE_DESIGN.value, "data"),
+
+            Output(DashIdStudy.PLATE_SELECT.value, "options")
+
         ],
         [
+            # Preview button
             Input(DashIdPlateDesigner.PREVIEW_BTN.value, "n_clicks"),
+
+            # Create button
+            Input(DashIdPlateDesigner.CREATE_BTN.value, "n_clicks"),
 
             Input(DashIdPlateDesigner.SIZE_SELECT.value, "value"),
             Input(DashIdPlateDesigner.N_ROWS_SELECT.value, "value"),
@@ -776,13 +793,18 @@ def register_callbacks(app):
             State({"type": DashIdPlateDesigner.ALTERNATE_ROUND_INPUT_TYPE.value, "index": ALL}, "value"),
             State({"type": DashIdPlateDesigner.ALTERNATE_ROUND_SELECT_TYPE.value, "index": ALL}, "value"),
 
-            # Repeat
+            # Store
+            State(DashIdStore.PLATE_LIBRARY.value, "data"),
 
+            # Plate name
+            State(DashIdPlateDesigner.NAME_INPUT.value, "value"),
 
+            # Plate select options
+            State(DashIdStudy.PLATE_SELECT.value, "options")
         ],
         prevent_initial_call="initial_duplicate"
     )
-    def show_preview(n_clicks, plate_size, n_rows, n_cols, dark_mode_off, 
+    def create_preview_plate(n_clicks_preview, n_clicks_create, plate_size, n_rows, n_cols, dark_mode_off, 
                      color_option, label_option,
                      qc_sample_spacing, start_with_qc,
                      plate_size_options,
@@ -791,6 +813,9 @@ def register_callbacks(app):
                      end_positions, end_samples,
                      spec_round_number, spec_round_samples,
                      alt_round_number, alt_round_samples,
+                     plate_lib_store,
+                     plate_name,
+                     plate_select_options
                      ):
         
         def group_values(group_index, group_samples):
@@ -844,8 +869,6 @@ def register_callbacks(app):
         
         plate_size_options[-1] = plate_size
 
-
-
         # if not n_clicks:
         #     raise PreventUpdate
         
@@ -895,8 +918,11 @@ def register_callbacks(app):
             }
         }
 
-
-        plate = PlateFactory.create_plate(plate_dim=[n_rows, n_cols], QC_config = QC_config_dict)
+        if qc_patterns:
+            plate = PlateFactory.create_plate(plate_dim=[n_rows, n_cols], QC_config = QC_config_dict)
+        else:
+            plate = PlateFactory.create_plate(plate_dim=[n_rows, n_cols],)
+        
         fig = plate.as_plotly_figure(
             annotation_metadata_key=label_option,
             color_metadata_key=color_option,
@@ -906,12 +932,33 @@ def register_callbacks(app):
             fig_width=750,
             dark_mode=not dark_mode_off,
             colormap_discrete="Set2"
-            # colormap_discrete="D3"
         )
 
-        return fig, plate_size, plate_size_options, n_rows, n_cols
+        plate_df_dict = plate.as_dataframe().to_dict("records")
 
-    # Create plate -> Add to plate library
+        if callback_context.triggered_id == DashIdPlateDesigner.CREATE_BTN.value:
+            if not plate_lib_store:
+                plate_lib_store = {}
+            
+            # --- Add plate to store ---
+            plate_lib_store[plate_name] = plate.as_dict()
+
+            # -- Update plate select options
+            plate_select_options = [name for name in plate_lib_store.keys()]
+
+            # --- Update library table ---
+            # Create plate objects from store
+            plates = [PlateFactory.dict_to_plate(plate_dict) for name, plate_dict in plate_lib_store.items()]
+            # Create dataframe for lib table
+            summaries = [plate.summary_dict() for plate in plates]
+            df = pd.DataFrame(summaries)
+            df.insert(0, value=list(plate_lib_store.keys()), column="plate_name")
+
+            return fig, plate_df_dict, plate_size, plate_size_options, n_rows, n_cols, plate_lib_store, df.to_dict("records"), plate.as_dict(), plate_select_options
+
+        return fig, plate_df_dict, plate_size, plate_size_options, n_rows, n_cols, no_update, no_update, plate.as_dict(), plate_select_options
+
+    # Create plate -> Show info alert
     @app.callback(
         [
             Output(DashIdPlateDesigner.ADDED_TO_LIB_ALERT.value, "is_open"),
@@ -921,22 +968,59 @@ def register_callbacks(app):
             Input(DashIdPlateDesigner.CREATE_BTN.value, "n_clicks")
         ],
         [
-            State(DashIdPlateDesigner.NAME_INPUT.value, "value")
+            State(DashIdPlateDesigner.NAME_INPUT.value, "value"),
         ]
     )
     def add_plate_to_lib(n_clicks, plate_name):
 
         if n_clicks:
             emphasized_plate_name = html.Span(plate_name, style={'font-weight': 'bold'})
-            message = [emphasized_plate_name, ' added to plate library - see tab']
+            message = [emphasized_plate_name, ' added to library.']
 
             return True, message
 
         raise PreventUpdate
-
-
     
+    # Remove plate from library
+    @app.callback(
+        [
+            Output(DashIdStore.PLATE_LIBRARY.value, "data", allow_duplicate=True),
+            Output(DashIdPlateLib.PLATE_LIB_DAG.value, "rowData", allow_duplicate=True),
+            Output(DashIdStudy.PLATE_SELECT.value, "options", allow_duplicate=True),
+            Output(DashIdStudy.PLATE_SELECT.value, "value"),
+        ],
+        [
+            Input(DashIdPlateLib.REMOVE_PLATE_BTN.value, "n_clicks")
+        ],
+        [
+            State(DashIdStore.PLATE_LIBRARY.value, "data"),
+            State(DashIdPlateLib.PLATE_LIB_DAG.value, "selectedRows"),
+            State(DashIdPlateLib.PLATE_LIB_DAG.value, "rowData"),
+        ],
+        prevent_initial_call="initial_duplicate"
+    )
+    def remove_plate_lib(n_clicks, plate_lib_store, selected, row_data):
+        if not n_clicks or not selected:
+            raise PreventUpdate
 
-    
+        try:
+            # Remove the selected plate from the store
+            selected_plate_name = selected[0]["plate_name"]
+            if selected_plate_name in plate_lib_store:
+                del plate_lib_store[selected_plate_name]
 
-    
+            # Update rowData for AG Grid, removing the selected row
+            updated_row_data = [row for row in row_data if row['plate_name'] != selected_plate_name]
+
+            options = [name for name in plate_lib_store.keys()]
+            val = None
+
+            return plate_lib_store, updated_row_data, options, val
+
+        except Exception as e:
+            print(e)
+            # Log the error or handle it as necessary
+            print(f"Error removing plate: {e}")
+            raise PreventUpdate
+        
+

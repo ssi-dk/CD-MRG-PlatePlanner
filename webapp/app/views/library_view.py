@@ -8,12 +8,12 @@ import dash_ag_grid as dag
 from app.component_ids.component_ids import DashIdPlateLib
 
 # TABLE
-
 column_defs = [
     {
         "headerName": "Name",
         "field": "plate_name",
-        "headerCheckboxSelection": True,
+        # "headerCheckboxSelection": True,
+        "checkBoxSelection": True
     },
     {
         "headerName": "Size",
@@ -24,26 +24,42 @@ column_defs = [
         "field": "dimensions"
     },
     {
-        "headerName": "Total QC samples",
-        "field": "n_qc_samples"
+        "headerName": "Analytical samples capacity",
+        "field": "analytical_samples_capacity"
     },
     {
-        "headerName": "QC sample types",
-        "field": "qc_sample_types"
+        "headerName": "Sample codes",
+        "field": "sample_codes"
     }
 ]
 
 plate_lib_dag = dag.AgGrid(
+    id=DashIdPlateLib.PLATE_LIB_DAG.value,
     rowData=[],
     columnDefs=column_defs,
     columnSize="responsiveSizeToFit",
+
+    dashGridOptions={
+        "rowSelection": "single",
+        "noRowsOverlayComponent": "CustomNoRowsOverlay",
+        "noRowsOverlayComponentParams": {
+             "message": "No plates to show",
+             "fontSize": 12,
+         },
+    },
+
+    getRowId=f"params.data.plate_name",
+
+    persistence=True,
+    persistence_type="session",
+
     className="dbc ag-theme-alpine ag-theme-alpine2",
 
+    style={"width": "100%", "height": "30vh"},
 )
 
 lib_layout = html.Div(
     [
-        dbc.Row(dbc.Col(), className="mt-2"),
         dbc.Row(
             [
                 dbc.Col(
@@ -58,7 +74,12 @@ lib_layout = html.Div(
             [
                 dbc.Col(
                     [
-                        dbc.Button("Remove selected")
+                        dbc.ButtonGroup(
+                            [
+                                dbc.Button("Remove", id=DashIdPlateLib.REMOVE_PLATE_BTN.value, outline=True, color="primary"),
+                                # dbc.Button("Preview", outline=True, color="success")
+                            ]
+                        )
                     ]
                 )
             ],

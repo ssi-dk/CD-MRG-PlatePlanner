@@ -2,14 +2,19 @@ from enum import Enum
 
 class DashIdStore(Enum):
     CURRENT_PLATE_DESIGN = "current-plate-design-store"
+    PLATE_LIBRARY = "plate-library-store"
+    SAMPLE_LIST = "sample-list-store"
+    PLATE_LAYOUTS = "plate-layout-store"
+    STUDY = "study-store"
 
 class DashIdMisc(Enum):
     DARK_MODE_SWITCH = "dark-mode-switch"
     NAVBAR = "navbar-simple"
 
-
 class DashIdPlateDesigner(Enum):
     PREVIEW_GRAPH = "plate-preview-graph"
+
+    PREVIEW_DAG = "plate-preview-dag"
 
     NAME_INPUT = "plate-name-input"
     SIZE_SELECT = "plate-size-select"
@@ -96,6 +101,50 @@ class DashIdPlateDesigner(Enum):
 class DashIdPlateLib(Enum):
     PLATE_LIB_DAG = "plate-lib-dag"
 
+    REMOVE_PLATE_BTN = "remove-plate-btn"
 
 
+class DashIdStudy(Enum):
+    SAMPLE_LIST_DAG = "sample-list-dag"
+    SAMPLE_LIST_DIV = "sample-list-div"
+    SAMPLE_LIST_FILENAME_LABEL = "sample-list-filename-label"
+    SAMPLE_LIST_UPLOAD = "sample-list-upload"
+
+    PLATE_LAYOUT_DAG = "plate-layout-dag"
+
+    EXAMPLE_LIST_BTN = "example-list-btn"
+
+    PLATE_SELECT = "plate-select"
+
+    SAMPLES_PER_PLATE_SELECT = "samples-per-plate-select"
+
+    RANDOMIZE_SELECT = "randomize-checkbox"
+
+    GROUP_COL_SELECT = "group-col-select"
+    GROUP_COL_SELECT_COLLAPSE = "group-col-select-collapse"
+    GROUP_COL_SELECT_LABEL = "group-col-select-label-collapse"
+
+    ALLOW_GROUP_SPLIT_SWITCH = "allow-group-split-switch"
+    ALLOW_GROUP_SPLIT_COLLAPSE = "allow-group-split-collapse"
+
+    DISTRIBUTE_SAMPLES_BTN = "distribute-samples-plates"
+
+    INPUT_ALERT = "distribute-input-alert"
+
+    PLATE_LAYOUT_SELECT_DAG = "plate-layout-select-"
+
+    SAMPLE_LIST_TAB = "sample-list-tab"
+    PLATE_ASSIGN_TAB = "plate-assign-tab"
+    PLATE_LAYOUT_TAB = "plate-layout-tab"
+
+    PLATE_LAYOUT_GRAPH = "plate-layout-graph"
+    PLATE_LAYOUT_TABLE_DIV = "plate-layout-table-div"
+
+    PLATE_ATTRIBUTE_DISTR_GRAPH = "plate-attribute-distribution-graph"
+
+    STUDY_TABS = "study-tabs"
+
+    # Plate layout fig settings
+    PL_FIG_COLOR_SELECT = "pl-fig-color-wells-select"
+    PL_FIG_LABEL_SELECT = "pl-fig-label-wells-select"
 
