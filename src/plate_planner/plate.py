@@ -19,7 +19,7 @@ import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 from matplotlib.patches import FancyBboxPatch
 
-from plate_planner.logger import logger
+from .logger import logger
 
 # parameters governing how numpy arrays are printed to console
 np.set_printoptions(threshold=np.inf)
@@ -2025,7 +2025,6 @@ class PlateFactory:
 
         return plate
     
-
 
 # @dataclass
 # class SampleWell(Well):
