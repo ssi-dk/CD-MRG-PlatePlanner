@@ -8,8 +8,10 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from plate_planner.plate import Plate, QCPlate
-from plate_planner.logger import logger
+from .plate import Plate, QCPlate, PlateFactory
+from .logger import logger
+
+
 
 class Study:
     """
@@ -162,66 +164,70 @@ class Study:
         """
         return self.plates[index]
         
-    def load_sample_file(self, records_file: str, sample_group_id_column=None, sample_id_column=None) -> None:
+    def load_sample_list(self, sample_list: Union[str, pd.DataFrame], sample_group_id_column=None, sample_id_column=None) -> None:
         """
-        Loads specimen records from a specified file into the study.
+        Loads specimen records from a specified file or DataFrame into the study.
 
-        This method reads specimen data from a file (Excel or CSV) and stores it in a DataFrame.
+        This method reads specimen data from a file (Excel or CSV) or directly from a provided DataFrame and stores it in a DataFrame.
         It also identifies or sets the column used for grouping specimens.
 
         Args:
-            records_file (str): The path to the file containing specimen records.
-            sample_group_id_column (Optional[str]): The column name in the file that represents the group ID of samples. 
+            records (Union[str, DataFrame]): The path to the file containing specimen records or a DataFrame with the records.
+            sample_group_id_column (Optional[str]): The column name in the records that represents the group ID of samples. 
                 If None, the method attempts to find a suitable column automatically.
 
         Raises:
-            FileExistsError: If the specified records_file does not exist.
+            FileExistsError: If the specified records_file does not exist and records is a file path.
 
         Examples:
             >>> study = Study(study_name="Oncology Study")
-            >>> study.load_specimen_records("specimens.xlsx", sample_group_id_column="PatientGroup")
+            >>> study.load_sample_data("specimens.xlsx", sample_group_id_column="PatientGroup")
+            >>> study.load_sample_data(df, sample_group_id_column="PatientGroup")
             >>> study.specimen_records_df.shape
             (200, 5)  # Example output, indicating 200 rows and 5 columns in the DataFrame.
         """
-        self.records_file_path = records_file
-        records_path = Path(records_file)
 
-        logger.debug(f"Loading records file: {records_file}")
-        extension = records_path.suffix
-        
-        if not records_path.exists():
-            logger.error(f"Could not find file {records_file}")
-            raise FileExistsError(records_file)
-        
-        if extension in [".xlsx", ".xls"]:
-            logger.debug("Importing Excel file.")
-            records = pd.read_excel(records_file)
-        elif extension == ".csv":
-            logger.debug("Importing csv file.")
-            records = pd.read_csv(records_file)
-        else:
-            logger.error("File extension not recognized")
-            records = pd.DataFrame()
+        if isinstance(sample_list, str):
+            records_path = Path(sample_list)
+            logger.debug(f"Loading records from file: {sample_list}")
             
-        if sample_group_id_column is None:
-            self._column_with_group_index = Study._find_column_with_group_index(records)
+            if not records_path.exists():
+                logger.error(f"Could not find file {sample_list}")
+                raise FileExistsError(sample_list)
+            
+            extension = records_path.suffix
+            print(extension)
+            if extension in [".xlsx", ".xls"]:
+                logger.debug("Importing Excel file.")
+                records_df = pd.read_excel(sample_list)
+            elif extension == ".csv":
+                logger.debug("Importing CSV file.")
+                records_df = pd.read_csv(sample_list)
+            else:
+                logger.error("File extension not recognized")
+                records_df = pd.DataFrame()
+        elif isinstance(sample_list, pd.DataFrame):
+            logger.debug("Loading records from DataFrame.")
+            records_df = sample_list
+        else:
+            logger.error("Unsupported records format")
+            records_df = pd.DataFrame()
+
+        if sample_group_id_column is None and not records_df.empty:
+            self._column_with_group_index = self._find_column_with_group_index(records_df)
         else:
             self._column_with_group_index = sample_group_id_column
         
-        logger.debug(f"{records.shape[0]} specimens in file")
-        logger.info("Metadata in file:")
-        for col in records.columns:
+        logger.debug(f"{records_df.shape[0]} specimens loaded")
+        logger.info("Metadata:")
+        for col in records_df.columns:
             logger.info(f"\t{col}")
 
         if sample_id_column:
             logger.debug(f"Sorting records in ascending order based on column '{sample_id_column}'")
-            records = records.sort_values(by=[sample_id_column])
+            records_df = records_df.sort_values(by=[sample_id_column])
             
-        # if self._column_with_group_index:
-        #     logger.debug(f"Sorting records in ascending order based on column '{self._column_with_group_index}'")
-            # records = records.sort_values(by=[self._column_with_group_index])
-        
-        self.specimen_records_df = records
+        self.sample_records_df = records_df
 
     def sort_records_within_groups(self, sortby_column: str) -> None:
         """
@@ -246,13 +252,13 @@ class Study:
         if self._column_with_group_index:
             logger.info(f"Sorting samples within {self._column_with_group_index} by {sortby_column}")
             # Step 1: Group the DataFrame by 'group_ID'
-            grouped = self.specimen_records_df.groupby(self._column_with_group_index)
+            grouped = self.sample_records_df.groupby(self._column_with_group_index)
 
             # Step 2: Sort each group by the 'sortby_column' column
             sorted_groups = [group.sort_values(sortby_column) for _, group in grouped]
 
             # Step 3: Concatenate the sorted groups back into a single DataFrame
-            self.specimen_records_df = pd.concat(sorted_groups)
+            self.sample_records_df = pd.concat(sorted_groups)
 
         else:
             raise ValueError(f"No group column defined: self._column_with_group_index: {self._column_with_group_index}")
@@ -283,7 +289,7 @@ class Study:
         if self._column_with_group_index:
             logger.info(f"Positioning sample within {self._column_with_group_index} based on {sortby_column} value {sample_value} at index {position_index}")
             # Step 1: Group the DataFrame by 'group_ID'
-            grouped = self.specimen_records_df.groupby(self._column_with_group_index)
+            grouped = self.sample_records_df.groupby(self._column_with_group_index)
 
             # Step 2: Modify each group
             modified_groups = []
@@ -304,7 +310,7 @@ class Study:
                 modified_groups.append(modified_group)
 
             # Step 3: Concatenate the modified groups back into a single DataFrame
-            self.specimen_records_df = pd.concat(modified_groups).reset_index(drop=True)
+            self.sample_records_df = pd.concat(modified_groups).reset_index(drop=True)
 
         else:
             raise ValueError(f"No group column defined: self._column_with_group_index: {self._column_with_group_index}")
@@ -525,9 +531,9 @@ class Study:
         plates = []
 
         # Copy the specimen data to work on
-        remaining_specimens = self.specimen_records_df.copy()
+        remaining_specimens = self.sample_records_df.copy()
 
-        N_specimens = self.specimen_records_df.shape[0]
+        N_specimens = self.sample_records_df.shape[0]
 
         if N_samples_desired_plate is None:
             N_samples_desired_plate = plate_layout.capacity
@@ -651,7 +657,7 @@ class Study:
             >>> study.specimen_records_df.head(3)  # Example output showing randomized order within groups.
         """
         
-        if not len(self.specimen_records_df) > 0:
+        if not len(self.sample_records_df) > 0:
             logger.error("There are no study records loaded. Use 'load_specimen_records' method to import study records.")
             return
         
@@ -661,7 +667,7 @@ class Study:
             else:
                 case_control = False
         
-        specimen_records_df_copy = self.specimen_records_df.copy()
+        specimen_records_df_copy = self.sample_records_df.copy()
         
         if case_control:
             column_with_group_index = self._column_with_group_index
@@ -702,7 +708,7 @@ class Study:
         specimen_records_df_copy = specimen_records_df_copy.rename(columns = {"index": "index_before_permutation"})
 
         self._N_permutations += 1
-        self.specimen_records_df = specimen_records_df_copy.copy()
+        self.sample_records_df = specimen_records_df_copy.copy()
 
     @staticmethod
     def _get_attribute_distribution(df: pd.DataFrame, attribute, ignore_nans=True, normalize=True):
@@ -723,10 +729,10 @@ class Study:
         raise Exception(f"Unable to achieve uniform distribution after {max_attempts} attempts")
     
     def _uniformity_within_tolerance(self, attribute, block_size, tolerance):
-        overall_distribution = self._get_attribute_distribution(self.specimen_records_df, attribute)
-        for start_idx in range(0, len(self.specimen_records_df), block_size):
+        overall_distribution = self._get_attribute_distribution(self.sample_records_df, attribute)
+        for start_idx in range(0, len(self.sample_records_df), block_size):
             end_idx = start_idx + block_size
-            block = self.specimen_records_df.iloc[start_idx:end_idx]
+            block = self.sample_records_df.iloc[start_idx:end_idx]
             block_distribution = block[attribute].value_counts(normalize=True)
 
             if not self._meets_criterion(block_distribution, overall_distribution, tolerance):
@@ -801,5 +807,23 @@ class Study:
         plt.xticks(rotation=45, ha='right')
 
         return fig
+    
+    def to_dict(self) -> dict:
+        study_dict = {
+            "name": self.name,
+            "plates": [plate.as_dict() for plate in self.plates],  # Assuming Plate objects have a as_dict method
+            "total_plates": self.total_plates,
+            "sample_records_df": self.sample_records_df.to_dict("records") 
+        }
+        return study_dict
+    
+    def dict_to_study(study_dict: dict) -> 'Study':
+        study = Study(study_name=study_dict.get("name"))
+        study.plates = [PlateFactory.dict_to_plate(plate_data) for plate_data in study_dict.get("plates", [])]
+        study.total_plates = study_dict.get("total_plates", 0)
+        study.sample_records_df = pd.DataFrame(study_dict.get("sample_records_df", {}))
+        return study
+    
+
 
                 
