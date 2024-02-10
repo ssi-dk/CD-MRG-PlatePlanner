@@ -5,7 +5,7 @@ import dash_ag_grid as dag
 import plotly.graph_objects as go
 import plotly.express as px
 
-from app.component_ids.component_ids import DashIdStudy
+from app.constants.component_ids import DashIdStudy
 
 randomization_options = [
     {"label": "None", "value": "none", "title": "No randomization of samples - samples have the same order as in the sample list"},
@@ -195,28 +195,54 @@ plate_fig_tab = html.Div(
             [
                 dbc.Col(
                     [
-                        dcc.Graph(
-                            id=DashIdStudy.PLATE_LAYOUT_GRAPH.value,
-                            figure=blank_fig,
+                        dbc.Label(children=[""], size="lg", id=DashIdStudy.FIG_PLATE_LABEL.value)
+                    ]
+                )
+            ],
+            className="mt-2 ms-2"
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        dbc.Spinner(
+                                dcc.Graph(
+                                id=DashIdStudy.PLATE_LAYOUT_GRAPH.value,
+                                figure=blank_fig,
+                            ),
+                            color="secondary",
+                            type="grow",
                         )
                     ]
                 )
-            ]
+            ],
+            # className="mt-2"
         )
     ]
 )
 
 plate_table_tab = html.Div(
     [
-        dbc.Row(
+    dbc.Row(
             [
-                dbc.Row(
+                dbc.Col(
                     [
-                        html.Div(id=DashIdStudy.PLATE_LAYOUT_TABLE_DIV.value, children=[])
+                        dbc.Label(children=[""], size="lg", id=DashIdStudy.TABLE_PLATE_LABEL.value)
                     ]
                 )
-            ]
-        )
+            ],
+            className="mt-4 ms-2"
+    ),
+    dbc.Row(
+        [
+            dbc.Row(
+                [
+                    html.Div(id=DashIdStudy.PLATE_LAYOUT_TABLE_DIV.value, children=[])
+                ]
+            )
+        ],
+        className="mt-2"
+    )
     ]
 )
 
@@ -231,7 +257,7 @@ plate_layout_select_dag = dag.AgGrid(
     rowData=[{}],
     className="dbc ag-theme-alpine ag-theme-alpine2",
 
-    style={"width": "100%", "height": "30vh"},
+    style={"width": "100%", "height": "400px"},
 
     dashGridOptions={
         "rowSelection": "single",
@@ -251,21 +277,11 @@ plate_layout_tab = html.Div(
             [
                 dbc.Col(
                     [
-                        dbc.Button("Download lists")
-                    ]
-                )
-            ],
-            className="mt-4"
-        ),
-        dbc.Row(
-            [
-                dbc.Col(
-                    [
                         plate_layout_select_dag
                     ]
                 )
             ],
-            className="mt-4"
+            # className="mt-4"
         ),
         dbc.Row(
             [
@@ -292,9 +308,94 @@ plate_layout_tab = html.Div(
                     ],
                 )
             ],
-            className="mt-2",
+            className="mt-4",
             # style={"width": "700px"}
         )
+    ]
+)
+
+### Export tab
+export_tab = html.Div(
+    [
+        dbc.Row(
+            [
+                html.H5("Lists")
+            ],
+            className="mt-4"
+        ),
+        dbc.Row(
+            [
+                dbc.Label("Fields", width=2),
+                dbc.Col(
+                    [
+                        dcc.Dropdown(multi=True, id=DashIdStudy.LIST_EXPORT_FIELDS_SELECT.value)
+                    ]
+                )
+            ],
+            className="mt-4"
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        dbc.Button("Download", color="success", id=DashIdStudy.DOWNLOAD_LISTS_BTN.value),
+                        dcc.Download(id=DashIdStudy.LIST_DOWNLOAD.value),
+                    ]
+                )
+            ],
+            className="mt-4"
+        ),
+        dbc.Row(dbc.Col(html.Hr())),
+        dbc.Row(
+            [
+                html.H5("Figures")
+            ],
+            className="mt-4"
+        ),
+        dbc.Row(
+            [
+                dbc.Label("Color", width=2),
+                dbc.Col(
+                    [
+                        dbc.Select(id=DashIdStudy.FIG_EXPORT_COLOR_SELECT.value)
+                    ],
+                ),
+            ],
+            className="mt-2"
+        ),
+        dbc.Row(
+            [
+                dbc.Label("Label", width=2),
+                dbc.Col(
+                    [
+                        dbc.Select(id=DashIdStudy.FIG_EXPORT_LABEL_SELECT.value)
+                    ],
+                )
+            ],
+            className="mt-2"
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        dbc.Button("Download", color="success", id=DashIdStudy.DOWNLOAD_FIGS_BTN.value),
+                        dcc.Download(id=DashIdStudy.FIGS_DOWNLOAD.value),
+                    ],
+                    width=2,
+                ),
+                # dbc.Col(
+                #     [
+                #         dbc.Select(
+                #             id=DashIdStudy.FIG_EXPORT_FORMAT_SELECT.value,
+                #             options=["pdf", "png", "jpg"],
+                #             value="pdf"
+                #         )
+                #     ],
+                #     width="auto"
+                # )
+            ],
+            className="mt-4"
+        ),
     ]
 )
 
@@ -320,6 +421,13 @@ study_tabs = dbc.Tabs(
             disabled=False,
             id=DashIdStudy.PLATE_LAYOUT_TAB.value,
             tab_id=f"{DashIdStudy.PLATE_LAYOUT_TAB.value}_tabid"
+        ),
+        dbc.Tab(
+            label="Export",
+            children=export_tab,
+            disabled=False,
+            id=DashIdStudy.PLATE_EXPORT_TAB.value,
+            tab_id=f"{DashIdStudy.PLATE_EXPORT_TAB.value}_tabid"
         ),
     ],
     className="mt-4",
@@ -352,12 +460,14 @@ study_layout = html.Div(
                 dbc.Col(
                     [
                         study_tabs
-                    ]
+                    ],
+                    width=6
                 ),
                 dbc.Col(
                     [
                         layout_inspect_tabs
-                    ]
+                    ],
+                    width=6
                 )
             ],
             className="ms-4 me-5"

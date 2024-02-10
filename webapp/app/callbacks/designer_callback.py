@@ -14,7 +14,7 @@ from dash_bootstrap_templates import load_figure_template
 import pandas as pd
 
 # components ids
-from app.component_ids.component_ids import DashIdPlateDesigner, DashIdMisc, DashIdStore, DashIdPlateLib, DashIdStudy
+from app.constants.component_ids import DashIdPlateDesigner, DashIdMisc, DashIdStore, DashIdPlateLib, DashIdStudy
 
 
 load_figure_template(["journal", "journal_dark"])
@@ -67,6 +67,34 @@ def remove_dynamic_row(triggered_id, row_container, remove_btn_type):
 
 
 def register_callbacks(app):
+
+    # Plate page loads
+    @app.callback(
+            [
+                Output(DashIdPlateLib.PLATE_LIB_DAG.value, "rowData"),
+            ],
+            [
+                Input(DashIdMisc.LOCATION.value, "pathname")
+            ],
+            [
+                State(DashIdStore.PLATE_LIBRARY.value, "data")
+            ]
+    )
+    def page_load(url, plate_lib_store):
+
+        if url == "/plates":
+            print(plate_lib_store.keys())
+             # --- Update library table ---
+            # Create plate objects from store
+            plates = [PlateFactory.dict_to_plate(plate_dict) for name, plate_dict in plate_lib_store.items()]
+            # Create dataframe for lib table
+            summaries = [plate.summary_dict() for plate in plates]
+            df = pd.DataFrame(summaries)
+            df.insert(0, value=list(plate_lib_store.keys()), column="plate_name")
+
+            return [df.to_dict("records")]
+
+        raise PreventUpdate
     
     # Add a QC sample definition
     @app.callback(
@@ -731,7 +759,7 @@ def register_callbacks(app):
     @app.callback(
         [
             Output(DashIdPlateDesigner.PREVIEW_GRAPH.value, "figure", allow_duplicate=True),
-            Output(DashIdPlateDesigner.PREVIEW_DAG.value, "rowData"),
+            Output(DashIdPlateDesigner.PREVIEW_DAG.value, "rowData", allow_duplicate=True),
 
             Output(DashIdPlateDesigner.SIZE_SELECT.value, "value"),
             Output(DashIdPlateDesigner.SIZE_SELECT.value, "options"),
@@ -741,12 +769,9 @@ def register_callbacks(app):
 
             Output(DashIdStore.PLATE_LIBRARY.value, "data"),
 
-            Output(DashIdPlateLib.PLATE_LIB_DAG.value, "rowData"),
+            Output(DashIdPlateLib.PLATE_LIB_DAG.value, "rowData", allow_duplicate=True),
 
             Output(DashIdStore.CURRENT_PLATE_DESIGN.value, "data"),
-
-            Output(DashIdStudy.PLATE_SELECT.value, "options")
-
         ],
         [
             # Preview button
@@ -799,8 +824,8 @@ def register_callbacks(app):
             # Plate name
             State(DashIdPlateDesigner.NAME_INPUT.value, "value"),
 
-            # Plate select options
-            State(DashIdStudy.PLATE_SELECT.value, "options")
+            # Url
+            State(DashIdMisc.LOCATION.value, "pathname")
         ],
         prevent_initial_call="initial_duplicate"
     )
@@ -815,7 +840,7 @@ def register_callbacks(app):
                      alt_round_number, alt_round_samples,
                      plate_lib_store,
                      plate_name,
-                     plate_select_options
+                     url
                      ):
         
         def group_values(group_index, group_samples):
@@ -834,6 +859,9 @@ def register_callbacks(app):
                     grouped_values[index] = [value]
 
             return grouped_values
+        
+        if (url != "/plates"):
+            raise PreventUpdate
 
         template = "journal" if dark_mode_off else "journal_dark"
 
@@ -954,9 +982,9 @@ def register_callbacks(app):
             df = pd.DataFrame(summaries)
             df.insert(0, value=list(plate_lib_store.keys()), column="plate_name")
 
-            return fig, plate_df_dict, plate_size, plate_size_options, n_rows, n_cols, plate_lib_store, df.to_dict("records"), plate.as_dict(), plate_select_options
+            return fig, plate_df_dict, plate_size, plate_size_options, n_rows, n_cols, plate_lib_store, df.to_dict("records"), plate.as_dict()
 
-        return fig, plate_df_dict, plate_size, plate_size_options, n_rows, n_cols, no_update, no_update, plate.as_dict(), plate_select_options
+        return fig, plate_df_dict, plate_size, plate_size_options, n_rows, n_cols, no_update, no_update, plate.as_dict()
 
     # Create plate -> Show info alert
     @app.callback(
@@ -986,8 +1014,6 @@ def register_callbacks(app):
         [
             Output(DashIdStore.PLATE_LIBRARY.value, "data", allow_duplicate=True),
             Output(DashIdPlateLib.PLATE_LIB_DAG.value, "rowData", allow_duplicate=True),
-            Output(DashIdStudy.PLATE_SELECT.value, "options", allow_duplicate=True),
-            Output(DashIdStudy.PLATE_SELECT.value, "value"),
         ],
         [
             Input(DashIdPlateLib.REMOVE_PLATE_BTN.value, "n_clicks")
@@ -1012,10 +1038,7 @@ def register_callbacks(app):
             # Update rowData for AG Grid, removing the selected row
             updated_row_data = [row for row in row_data if row['plate_name'] != selected_plate_name]
 
-            options = [name for name in plate_lib_store.keys()]
-            val = None
-
-            return plate_lib_store, updated_row_data, options, val
+            return plate_lib_store, updated_row_data
 
         except Exception as e:
             print(e)

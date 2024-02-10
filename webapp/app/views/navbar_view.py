@@ -1,7 +1,7 @@
 from dash import dcc, html
 import dash_bootstrap_components as dbc
 
-from app.component_ids.component_ids import DashIdMisc
+from app.constants.component_ids import DashIdMisc
 
 # color switch
 dark_mode_switch = html.Span(
@@ -29,7 +29,11 @@ dark_mode_switch = html.Span(
 
 navbar = dbc.NavbarSimple(
             [
-                 dbc.NavItem(
+                dbc.NavItem(dbc.NavLink("Home", href="/"), style={"font-size":"1.1rem"}),
+                dbc.NavItem(dbc.NavLink("Plates", href="/plates"), style={"font-size":"1.1rem"}),
+                dbc.NavItem(dbc.NavLink("Project", href="/project"), style={"font-size":"1.1rem"}),
+                dbc.NavItem(dbc.NavLink("  ")),
+                dbc.NavItem(
                     html.Div(dark_mode_switch,style={"padding-top": "10px"}),
                     
                 ),
@@ -41,6 +45,7 @@ navbar = dbc.NavbarSimple(
                 ),
             ],
             brand=html.Img(src="./assets/logo.png", width="300"),
+            brand_href="/",
             color="light",
             id=DashIdMisc.NAVBAR.value
         )

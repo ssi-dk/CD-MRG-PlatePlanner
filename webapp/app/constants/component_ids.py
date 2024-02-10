@@ -10,6 +10,7 @@ class DashIdStore(Enum):
 class DashIdMisc(Enum):
     DARK_MODE_SWITCH = "dark-mode-switch"
     NAVBAR = "navbar-simple"
+    LOCATION = "current-page"
 
 class DashIdPlateDesigner(Enum):
     PREVIEW_GRAPH = "plate-preview-graph"
@@ -136,6 +137,7 @@ class DashIdStudy(Enum):
     SAMPLE_LIST_TAB = "sample-list-tab"
     PLATE_ASSIGN_TAB = "plate-assign-tab"
     PLATE_LAYOUT_TAB = "plate-layout-tab"
+    PLATE_EXPORT_TAB = "plate-export-tab"
 
     PLATE_LAYOUT_GRAPH = "plate-layout-graph"
     PLATE_LAYOUT_TABLE_DIV = "plate-layout-table-div"
@@ -144,7 +146,23 @@ class DashIdStudy(Enum):
 
     STUDY_TABS = "study-tabs"
 
+    # Plate layout label
+    FIG_PLATE_LABEL = "pl-figure-name-label"
+    TABLE_PLATE_LABEL = "pl-table-name-label"
+
     # Plate layout fig settings
     PL_FIG_COLOR_SELECT = "pl-fig-color-wells-select"
     PL_FIG_LABEL_SELECT = "pl-fig-label-wells-select"
+
+    # Export
+    LIST_EXPORT_FIELDS_SELECT = "list-export-fields-select"
+    FIG_EXPORT_FORMAT_SELECT = "fig-export-format-select"
+    FIG_EXPORT_COLOR_SELECT = "fig-export-color-select"
+    FIG_EXPORT_LABEL_SELECT = "fig-export-label-select"
+
+    DOWNLOAD_LISTS_BTN = "download-lists-button"
+    LIST_DOWNLOAD = "list-download"
+
+    DOWNLOAD_FIGS_BTN = "download-figures-button"
+    FIGS_DOWNLOAD = "figs-download"
 

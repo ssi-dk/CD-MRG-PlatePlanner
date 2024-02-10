@@ -1,6 +1,9 @@
 import base64
 from io import StringIO, BytesIO
 from pathlib import Path
+from datetime import datetime
+
+import zipfile
 
 from dash import Input, Output, State, no_update, callback_context, MATCH, ALL
 from dash import dcc, html
@@ -19,8 +22,10 @@ from plate_planner.plate import PlateFactory
 from plate_planner.study import Study
 
 # components ids
-from app.component_ids.component_ids import DashIdPlateDesigner, DashIdMisc, DashIdStore, DashIdPlateLib, DashIdStudy
+from app.constants.component_ids import DashIdPlateDesigner, DashIdMisc, DashIdStore, DashIdPlateLib, DashIdStudy
 
+PLATE_METADATA_INCLUDE = ["name", "plate_id", "index", "sample_code",  "sample_name"]
+PLATE_METADATA_EXCLUDE = ["rgb_color", "coordinate"]
 
 def register_callbacks(app):
 
@@ -29,6 +34,13 @@ def register_callbacks(app):
             Output(DashIdStudy.SAMPLE_LIST_DIV.value, "children"),
             Output(DashIdStudy.SAMPLE_LIST_FILENAME_LABEL.value, "children"),
             Output(DashIdStore.SAMPLE_LIST.value, "data"),
+
+            Output(DashIdStudy.PL_FIG_LABEL_SELECT.value, "options"),
+            Output(DashIdStudy.PL_FIG_COLOR_SELECT.value, "options"),
+
+            Output(DashIdStudy.FIG_EXPORT_LABEL_SELECT.value, "options"),
+            Output(DashIdStudy.FIG_EXPORT_COLOR_SELECT.value, "options"),
+            Output(DashIdStudy.LIST_EXPORT_FIELDS_SELECT.value, "options"),
         ],
         [
             Input(DashIdStudy.SAMPLE_LIST_UPLOAD.value, "contents"),
@@ -90,7 +102,9 @@ def register_callbacks(app):
                 
             )
 
-            return table, filename.as_posix(), df_dict
+            columns = df.columns.to_list() + PLATE_METADATA_INCLUDE
+
+            return table, filename.as_posix(), df_dict, columns, columns, columns, columns, columns
 
         raise PreventUpdate
     
@@ -101,8 +115,13 @@ def register_callbacks(app):
             Output(DashIdStore.SAMPLE_LIST.value, "data", allow_duplicate=True),
             Output(DashIdStudy.SAMPLE_LIST_FILENAME_LABEL.value, "children", allow_duplicate=True),
 
-            Output(DashIdStudy.PL_FIG_LABEL_SELECT.value, "options"),
-            Output(DashIdStudy.PL_FIG_COLOR_SELECT.value, "options"),
+            Output(DashIdStudy.PL_FIG_LABEL_SELECT.value, "options", allow_duplicate=True),
+            Output(DashIdStudy.PL_FIG_COLOR_SELECT.value, "options", allow_duplicate=True),
+
+            Output(DashIdStudy.FIG_EXPORT_LABEL_SELECT.value, "options", allow_duplicate=True),
+            Output(DashIdStudy.FIG_EXPORT_COLOR_SELECT.value, "options", allow_duplicate=True),
+            Output(DashIdStudy.LIST_EXPORT_FIELDS_SELECT.value, "options", allow_duplicate=True),
+            Output(DashIdStudy.LIST_EXPORT_FIELDS_SELECT.value, "value", allow_duplicate=True),
         ],
         [
             Input(DashIdStudy.EXAMPLE_LIST_BTN.value, "n_clicks")
@@ -141,14 +160,12 @@ def register_callbacks(app):
                     },
 
                 className="dbc ag-theme-alpine ag-theme-alpine2",
+                style={"width": "100%", "height": "500px"},
             )
 
-            print(df.columns)
-
-            columns = df.columns.to_list() + ["name", "sample_code",  "sample_name"]
-            print(columns)
+            columns = df.columns.to_list() + PLATE_METADATA_INCLUDE
             
-            return table, df_dict, "Example study sample list", columns, columns
+            return table, df_dict, "Example study sample list", columns, columns, columns, columns, columns, columns
 
         raise PreventUpdate
     
@@ -251,7 +268,8 @@ def register_callbacks(app):
         # randomize options
         match randomize_option:
             case "all":
-                study.randomize_order(reproducible=False)
+                study.randomize_order(case_control=False, reproducible=False)
+                allow_group_split = True
             case "groups":
                 study._column_with_group_index = group_column
                 study.randomize_order(case_control=True, reproducible=False)
@@ -289,6 +307,9 @@ def register_callbacks(app):
         [
             Output(DashIdStudy.PLATE_LAYOUT_GRAPH.value, "figure"),
             Output(DashIdStudy.PLATE_LAYOUT_TABLE_DIV.value, "children"),
+
+            Output(DashIdStudy.FIG_PLATE_LABEL.value, "children"),
+            Output(DashIdStudy.TABLE_PLATE_LABEL.value, "children"),
         ],
         [
             Input(DashIdStudy.PLATE_LAYOUT_SELECT_DAG.value, "selectedRows"),
@@ -330,9 +351,12 @@ def register_callbacks(app):
         plate_df = plate.as_dataframe()
 
         columns = plate_df.columns
-        exclude = ["coordinate", "index", "empty", "rgb_color"]
+        exclude = ["coordinate", "index", "empty", "rgb_color",]
         columns = [col for col in columns if col not in exclude]
         column_defs=[{"headerName": col, "field": col} for col in columns]
+        # column_defs.append(
+        #     {"headerName": "Name", "field": "name", "pinned": "left"}
+        # )
 
         plate_dag = dag.AgGrid(
             id="study_plate_dag",
@@ -341,7 +365,117 @@ def register_callbacks(app):
             columnDefs=column_defs
         )
 
-        return fig, plate_dag
+        plate_name = f"Plate {plate_id}"
+
+        return fig, plate_dag, plate_name, plate_name
+    
+    # Update options that relate to plate library
+    @app.callback(
+        [
+            Output(DashIdStudy.PLATE_SELECT.value, "options")
+        ],
+        [
+            Input(DashIdMisc.LOCATION.value, "pathname")
+        ],
+        [
+            State(DashIdStore.PLATE_LIBRARY.value, "data")
+        ]
+    )
+    def update_options(url, plate_lib_store):
+
+        if url != "/project":
+            raise PreventUpdate
+
+        if not plate_lib_store:
+            raise PreventUpdate
+        
+        return [list(plate_lib_store.keys())]
+    
+
+    # Download lists
+    @app.callback(
+        [
+            Output(DashIdStudy.LIST_DOWNLOAD.value, "data")
+        ],
+        [
+            Input(DashIdStudy.DOWNLOAD_LISTS_BTN.value, "n_clicks")
+        ],
+        [
+            State(DashIdStore.PLATE_LAYOUTS.value, "data"),
+            State(DashIdStudy.LIST_EXPORT_FIELDS_SELECT.value, "value")
+        ]
+    )
+    def download_lists(n_clicks, plate_layouts_store, fields_select):
+
+        if n_clicks:
+
+            zip_buffer = BytesIO()
+
+            with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED, False) as zip_file:
+                # Generate CSV files from DataFrame and add them to the ZIP file
+                for plate_id, plate in plate_layouts_store.items():  
+                    plate = PlateFactory.dict_to_plate(plate)
+                    df = plate.as_dataframe()
+
+                    # Keep columns that user selected
+                    df = df[fields_select]
+                    
+                    csv_buffer = BytesIO()
+                    df.to_csv(csv_buffer, index=False)
+                    csv_buffer.seek(0)
+                    file_name = f'plate_{plate_id}.csv'
+                    zip_file.writestr(file_name, csv_buffer.getvalue())
+
+            # Prepare the ZIP file for download
+            zip_buffer.seek(0)
+            return [dcc.send_bytes(zip_buffer.getvalue(), "data.zip")]
+
+        raise PreventUpdate
+    
+
+    # Download plate figures
+    @app.callback(
+        [
+            Output(DashIdStudy.FIGS_DOWNLOAD.value, "data")
+        ],
+        [
+            Input(DashIdStudy.DOWNLOAD_FIGS_BTN.value, "n_clicks")
+        ],
+        [
+            State(DashIdStore.PLATE_LAYOUTS.value, "data"),
+            State(DashIdStudy.FIG_EXPORT_COLOR_SELECT.value, "value"),
+            State(DashIdStudy.FIG_EXPORT_LABEL_SELECT.value, "value"),
+        ]
+    )
+    def download_figs(n_clicks, plate_layouts_store, color_select, label_select):
+        if not n_clicks:
+            raise PreventUpdate
+        
+        zip_buffer = BytesIO()
+
+        with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED, False) as zip_file:
+            for plate_id, plate in plate_layouts_store.items():  
+                plate = PlateFactory.dict_to_plate(plate)
+
+                fig = plate.as_plotly_figure(
+                    color_metadata_key=color_select,
+                    annotation_metadata_key=label_select
+                )
+                
+                # Save Plotly figure as PDF to a BytesIO buffer
+                pdf_buffer = BytesIO()
+                fig.write_image(pdf_buffer, format="pdf")
+                pdf_buffer.seek(0)  # Important: Move to the start of the BytesIO object
+                
+                # Add the PDF bytes to the ZIP file
+                file_name = f'plate_{plate_id}.pdf'
+                zip_file.writestr(file_name, pdf_buffer.getvalue())
+
+        zip_buffer.seek(0)
+
+        return [dcc.send_bytes(zip_buffer.getvalue(), "data.zip")]
+        
+
         
         
 

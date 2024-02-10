@@ -400,7 +400,7 @@ plate_preview_dag = dag.AgGrid(
 
     className="dbc ag-theme-alpine ag-theme-alpine2",
 
-    style={"width": "100%", "height": "50vh"},
+    style={"width": "100%", "height": "500px"},
 )
 
 plate_design_table_tab = html.Div(

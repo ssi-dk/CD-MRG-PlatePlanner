@@ -5,7 +5,7 @@ import dash_bootstrap_components as dbc
 
 import dash_ag_grid as dag
 
-from app.component_ids.component_ids import DashIdPlateLib
+from app.constants.component_ids import DashIdPlateLib
 
 # TABLE
 column_defs = [
