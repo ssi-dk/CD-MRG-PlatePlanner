@@ -265,6 +265,7 @@ def register_callbacks(app):
         study = Study()
         study.load_sample_list(sample_list_df)
 
+
         # randomize options
         match randomize_option:
             case "all":
@@ -277,7 +278,7 @@ def register_callbacks(app):
         study.distribute_samples_to_plates(
             plate_layout=plate,
             allow_group_split=allow_group_split,
-            N_samples_desired_plate=samples_per_plate
+            N_samples_desired_plate=int(samples_per_plate)
         )
 
         # store plates to store

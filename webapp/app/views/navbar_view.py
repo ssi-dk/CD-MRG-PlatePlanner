@@ -40,7 +40,7 @@ navbar = dbc.NavbarSimple(
                 dbc.NavItem(dbc.NavLink("  ")),
                 dbc.NavItem(dbc.NavLink(
                     html.I(className="fa-brands fa-github", style={"font-size":"2.0rem"}),
-                    href="https://github.com/ssi-dk/CD-MRG-DashPlatePlanner",
+                    href="https://github.com/ssi-dk/CD-MRG-PlatePlanner",
                     target="_blank"),
                 ),
             ],

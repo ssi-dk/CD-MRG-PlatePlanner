@@ -28,6 +28,8 @@ app = dash.Dash(__name__,
                 update_title=None,
                 )
 
+server = app.server
+
 app.title = 'PlatePlanner' 
 
 # register callbacks
