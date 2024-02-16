@@ -1,6 +1,6 @@
 
 plate-planner
-dash==2.14.0
+dash==2.15.0
 dash-ag-grid
 dash-bootstrap-components
 dash-bootstrap-templates
