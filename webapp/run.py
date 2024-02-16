@@ -28,8 +28,6 @@ app = dash.Dash(__name__,
                 update_title=None,
                 )
 
-server = app.server
-
 app.title = 'PlatePlanner' 
 
 # register callbacks
@@ -56,6 +54,8 @@ app.layout = html.Div(
 
     ]
 )
+
+server = app.server
 
 # Control dark mode theme change 
 clientside_callback(
