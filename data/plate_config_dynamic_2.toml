@@ -37,14 +37,15 @@ PO = "PO: Pooled_specimens"
     # `repeat = { pattern = ["EC", "PB"], times = 3 }`: Repeats the specified pattern 3 times.
 
 
+round_3 = ["EC", "PO"]
 # round_3 = ["EC", "PO", "PB"]
 # round_7 = ["PO", "PO", "EC"]
 
-# start = ["EC", "PB"]
-alternating = [["EC", "PB"], ["EC", "PO"]]
-# end = ["PB"]
+start = ["EC", "PB"]
+# alternating = [["EC", "PB"], ["EC", "PO"]]
+end = ["PB", "PB", "PB"]
 
-# repeat_pattern = { pattern = ["EC", "PB"], times = 3 }
+# repeat = { pattern = ["EC", "PB"], times = 3 }
 
 
 

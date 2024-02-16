@@ -12,6 +12,7 @@ dependencies:
   - openpyxl
   - matplotlib
   - seaborn
+  - plolty
   - nbconvert
   - autopep8
   - hatch
