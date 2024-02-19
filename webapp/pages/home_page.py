@@ -50,7 +50,7 @@ body = dbc.Container(
                         #     """
                         # )
                     ],
-                    width=6
+                    sm=12, md=12, lg=6
                 ),
                
             ],
@@ -153,7 +153,7 @@ body = dbc.Container(
                         ),
                         
                     ],
-                    width=6
+                    sm=12, md=12, lg=6
                 ),
             ]
         ),

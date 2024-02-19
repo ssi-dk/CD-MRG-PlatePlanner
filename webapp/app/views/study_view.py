@@ -461,13 +461,13 @@ study_layout = html.Div(
                     [
                         study_tabs
                     ],
-                    width=6
+                    sm=12, md=12, lg=6
                 ),
                 dbc.Col(
                     [
                         layout_inspect_tabs
                     ],
-                    width=6
+                    sm=12, md=12, lg=6
                 )
             ],
             className="ms-4 me-5"

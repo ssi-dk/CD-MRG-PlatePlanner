@@ -182,7 +182,7 @@ qc_sample_def = html.Div(
                                 dbc.Label("Number of samples between QC rounds", width="auto"),
                                 dbc.Col(
                                     [
-                                        dbc.Input(id=DashIdPlateDesigner.QC_SAMPLE_SPACING_INPUT.value, type="number", min=0, value=10),
+                                        dbc.Input(id=DashIdPlateDesigner.QC_SAMPLE_SPACING_INPUT.value, type="number", min=0, value=11),
                                     ],
                                     width=2
                                 ),
@@ -315,7 +315,7 @@ design_tab = html.Div(
                         width=7
                     )
                 ],
-                className="mt-5"
+                className="mt-4 mb-4"
             ),
     ]
 )
