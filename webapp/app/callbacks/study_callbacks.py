@@ -174,16 +174,22 @@ def register_callbacks(app):
         [
             Output(DashIdStudy.GROUP_COL_SELECT_COLLAPSE.value, "is_open"),
             Output(DashIdStudy.ALLOW_GROUP_SPLIT_COLLAPSE.value, "is_open"),
+            Output(DashIdStudy.GROUP_COL_SELECT.value, "options")
         ],
         [
             Input(DashIdStudy.RANDOMIZE_SELECT.value, "value")
+        ],
+        [
+            State(DashIdStore.SAMPLE_LIST.value, "data")
         ]
     )
-    def show_group_col_select(randomize_option):
+    def show_group_col_select(randomize_option, sample_list):
         if randomize_option == "groups":
-            return True, True
+            options = pd.DataFrame(sample_list).columns.values
+            print(options)
+            return True, True, options
         else:
-            return False, False
+            return False, False, no_update
         
     # Update samples per plate options
     @app.callback(
@@ -219,7 +225,9 @@ def register_callbacks(app):
 
             Output(DashIdStudy.PLATE_LAYOUT_SELECT_DAG.value, "rowData"),
 
-            Output(DashIdStudy.STUDY_TABS.value, "active_tab")
+            Output(DashIdStudy.STUDY_TABS.value, "active_tab"),
+
+            Output(DashIdStudy.PLATE_LAYOUT_SELECT_DAG.value, "selectedRows"),
         ],
         [
             Input(DashIdStudy.DISTRIBUTE_SAMPLES_BTN.value, "n_clicks")
@@ -251,10 +259,10 @@ def register_callbacks(app):
         ):
 
         if not selected_plate:
-            return True, "No plate selected", no_update, no_update, no_update, no_update
+            return True, "No plate selected", no_update, no_update, no_update, no_update, no_update
         
         if not sample_list_store:
-            return True, "No sample list loaded", no_update, no_update, no_update, no_update
+            return True, "No sample list loaded", no_update, no_update, no_update, no_update, no_update
 
         plate_dict = plate_lib_store[selected_plate]
 
@@ -300,7 +308,7 @@ def register_callbacks(app):
         active_tab = f"{DashIdStudy.PLATE_LAYOUT_TAB.value}_tabid"
 
 
-        return no_update, no_update, plates_store, study.to_dict(), plate_select_rowdata, active_tab
+        return no_update, no_update, plates_store, study.to_dict(), plate_select_rowdata, active_tab, {"function": "params.data.plate_id == '1'"}
     
 
     # User select plate from table
