@@ -332,7 +332,10 @@ plate_design_fig_tab = html.Div(
                     id=DashIdPlateDesigner.PREVIEW_GRAPH.value,
                     figure=go.Figure(),
                     responsive=True,
-                    style={"width":"750px", "height": "500px"}
+                    style={"width":"750px", "height": "500px"},
+                    config={
+                        'displayModeBar': False  # hide the toolbar
+                    }
                 )
             ),
             type="grow",

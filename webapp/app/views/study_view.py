@@ -209,6 +209,9 @@ plate_fig_tab = html.Div(
                                 dcc.Graph(
                                 id=DashIdStudy.PLATE_LAYOUT_GRAPH.value,
                                 figure=blank_fig,
+                                config={
+                                    'displayModeBar': False  # hide the toolbar
+                                }
                             ),
                             color="secondary",
                             type="grow",
