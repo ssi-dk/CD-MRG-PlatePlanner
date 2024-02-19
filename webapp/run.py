@@ -46,12 +46,32 @@ app.layout = html.Div(
         dcc.Store(id=DashIdStore.STUDY.value, storage_type="session", data=[]),
         dcc.Store(id=DashIdStore.PLATE_LAYOUTS.value, storage_type="session", data=[]),
 
-        navbar,
-        html.Div(dash.page_container, className="dbc dbc-ag-grid"),
-        # html.Div(designer_layout, className="dbc dbc-ag-grid"),
-        # html.Div(className="mt-4"),
-        # html.Div(study_layout, className="dbc dbc-ag-grid"),
-
+        html.Div(
+            [
+                # Your navbar and page container
+                navbar,
+                html.Div(dash.page_container, className="dbc dbc-ag-grid"),
+                # Footer
+                html.Footer([
+                    dbc.Container(
+                        [
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            html.P("© 2024 Filip Ljung", className="text-light"),
+                                            # html.P("Citation")
+                                        ],
+                                    ),
+                                ],
+                                className="mt-1"
+                            ),
+                        ]
+                    )
+                ], className="dbc footer mt-auto bg-dark")
+                ],
+            id='content'
+        )
     ]
 )
 
