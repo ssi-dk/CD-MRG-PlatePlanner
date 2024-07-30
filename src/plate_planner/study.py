@@ -1,17 +1,21 @@
 from pathlib import Path
 import copy
 import datetime
-from typing import Union, Iterator, Any
+from typing import Union, Iterator, Any, Tuple, Literal
 
 import pandas as pd
 import numpy as np
 
+import pulp as lp
+from scipy.stats import chi2_contingency
+from scipy.stats import entropy
+
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+import plotly.express as px
 
 from .plate import Plate, QCPlate, PlateFactory
 from .logger import logger
-
-
 
 class Study:
     """
@@ -49,7 +53,7 @@ class Study:
     _N_permutations : int = 0
     _column_with_group_index : str = ""
     
-    def __init__(self, study_name=None,) -> None:
+    def __init__(self, name=None, samples=None) -> None:
         """
         Initializes a new instance of the Study class.
 
@@ -57,8 +61,9 @@ class Study:
         is generated using the current date.
 
         Args:
-            study_name (Optional[str]): The name for the study. If None, a default name in the format 
+            name (Optional[str]): The name for the study. If None, a default name in the format 
                 "Study_YYYY-MM-DD" is assigned, where YYYY-MM-DD represents the current date.
+            samples (Optional[Union[str, Path, pd.DataFrame]]): The specimen records for the study. This can be a path to a file or a pandas DataFrame.
 
         Examples:
             >>> study1 = Study(study_name="Alzheimer's Research")
@@ -70,10 +75,14 @@ class Study:
             "Study_2024-01-21"  # Example output; actual output will vary based on the current date.
         """
         
-        if study_name is None:
-            study_name = f"Study_{datetime.date}"
+        if name is None:
+            name = f"Study_{datetime.date}"
+
+        if samples is not None:
+            self.load_sample_list(samples)
+
             
-        self.name = study_name
+        self.name = name
         self.plates = []
         
     def __iter__(self) -> Iterator[Union[Plate, QCPlate]]:
@@ -164,7 +173,7 @@ class Study:
         """
         return self.plates[index]
         
-    def load_sample_list(self, sample_list: Union[str, pd.DataFrame], sample_group_id_column=None, sample_id_column=None) -> None:
+    def load_sample_list(self, sample_list: Union[str, Path, pd.DataFrame], sample_group_id_column=None, sample_id_column=None) -> None:
         """
         Loads specimen records from a specified file or DataFrame into the study.
 
@@ -172,7 +181,7 @@ class Study:
         It also identifies or sets the column used for grouping specimens.
 
         Args:
-            records (Union[str, DataFrame]): The path to the file containing specimen records or a DataFrame with the records.
+            records (Union[str, Path, DataFrame]): The path to the file containing specimen records or a DataFrame with the records.
             sample_group_id_column (Optional[str]): The column name in the records that represents the group ID of samples. 
                 If None, the method attempts to find a suitable column automatically.
 
@@ -342,6 +351,7 @@ class Study:
         """
         
         logger.debug(f"Adding {len(specimen_samples_df)} samples to plate {study_plate.plate_id}")
+        specimen_samples_df = specimen_samples_df.reset_index(drop=True)
         columns = specimen_samples_df.columns
         
         # keep track on how many wells we should use per batch
@@ -356,6 +366,7 @@ class Study:
                     well.metadata[col] = specimen_samples_df[col][plate_specimen_count]
                     
                 plate_specimen_count += 1
+                well.empty = False
                 
             else:
                 # add metadata key and nan value for each column in dataframe
@@ -498,7 +509,83 @@ class Study:
 
             if file_format:
                 fig.savefig(file_path)
-    
+
+    def distribute_samples_to_plates_ilp(self,
+            plate_layout: Union[Plate, QCPlate],
+            balance_columns: list,
+            blocking_column: str = None,
+            group_column: str = None,
+            max_samples_per_plate: int = None,
+            block_shuffle=True,
+            full_plate=False,
+        ):
+        
+        if max_samples_per_plate is None:
+            max_samples_per_plate = plate_layout.n_non_qc_wells
+
+        assigned_plates_df = self.assign_plates_sort(
+                self.sample_records_df.copy(),
+                balance_columns=balance_columns,
+                max_samples_per_plate=max_samples_per_plate,
+                group_id_col=group_column,
+                full_plate=full_plate,
+        )
+        
+        # assigned_plates_df, solution_found = self.assign_plates_ilp(
+        #         self.sample_records_df.copy(),
+        #         balance_columns=balance_columns,
+        #         max_samples_per_plate=max_samples_per_plate,
+        #         group_column=group_column,
+        #         full_plate=full_plate,
+        #         tolerance=tolerance
+        # )
+     
+
+        # if solution_found == 0:
+        #     raise ValueError("Samples could not be distributed optimally using ILP with set constraints")
+
+        plates = []
+
+        for plate_id in assigned_plates_df["assigned_plate"].unique():
+
+            logger.info(f"Processing {plate_id}")
+            current_plate = copy.deepcopy(plate_layout)
+            current_plate.plate_id = plate_id
+
+            plate_sel = assigned_plates_df["assigned_plate"] == plate_id
+            plate_samples_df = assigned_plates_df[plate_sel]
+
+            # Block samples
+            if blocking_column is not None:
+                if blocking_column in assigned_plates_df.columns:
+                    try:
+                        plate_samples_df, solution_found = self.create_blocks_within_plate_ilp(
+                            samples_df=plate_samples_df.copy(),
+                            group_column=group_column,
+                            blocking_column=blocking_column,
+                            block_shuffle=block_shuffle,
+                            
+                            )
+                    except Exception as e:
+                        print(e)
+
+
+                    if not solution_found:
+                        raise ValueError("Samples could not be grouped optimally using ILP with set constraints")
+                else:
+                    raise ValueError(f"Blocking samples failed: column '{blocking_column}' is not inte sample list dataframe columns ({assigned_plates_df.columns})")
+
+            # Add specimens to the current plate
+            current_plate = self._add_specimens_to_plate(current_plate, plate_samples_df)
+            plates.append(current_plate)
+
+
+        self.plates = plates
+        self.total_plates = len(plates)
+
+        logger.info(f"Distributed samples across {self.total_plates} plates.")
+
+
     def distribute_samples_to_plates(self, plate_layout: Union[Plate, QCPlate], allow_group_split=False, N_samples_desired_plate=None) -> None:
         """
         Distributes specimens across multiple plates based on a specified layout, with an option to keep group integrity.
@@ -592,6 +679,8 @@ class Study:
         self.total_plates = plate_number - 1
 
         logger.info(f"Distributed samples across {self.total_plates} plates.")
+
+    
        
     @staticmethod
     def _find_column_with_group_index(specimen_records_df: pd.DataFrame) -> str:
@@ -637,6 +726,607 @@ class Study:
             
         return "" 
     
+    @staticmethod
+    def assign_plates_monte_carlo(
+        samples_df: pd.DataFrame,
+        sample_id_column: str,
+        balance_column: str,
+        max_samples_per_plate,
+        group_id_column: str = None,
+        iterations=1000) -> pd.DataFrame:
+        
+        def calculate_abs_deviation(organ_ids, plate_assignments, total_plates, global_proportions):
+            summed_abs_residuals = 0
+            expected_counts_per_plate = global_proportions * (len(organ_ids) / total_plates)
+            
+            for plate in range(total_plates):
+                plate_mask = plate_assignments == plate
+                actual_counts = np.bincount(organ_ids[plate_mask], minlength=len(global_proportions))
+                
+                # Calculate variance as the sum of squared differences from expected counts
+                summed_abs_residuals += np.sum(np.abs(actual_counts - expected_counts_per_plate) )
+            
+            # Normalize variance by the number of plates to avoid scaling effects
+            # normalized_variance = deviation_sum / total_plates
+            return summed_abs_residuals
+         
+        # use index if samples are not grouped in blocks 
+        if group_id_column is None:
+            samples_df = samples_df.reset_index()
+            group_id_column = "index"
+
+         # Calculate the required number of plates based on max_samples_per_plate
+        total_samples = len(samples_df)
+        total_plates = -(-total_samples // max_samples_per_plate)  # Ceiling division to ensure enough plates
+
+        samples_df = samples_df.copy()
+
+        # code categories to be balances
+        balance_column_id = f"{balance_column}_id"
+        samples_df[balance_column_id] = samples_df[balance_column].astype('category').cat.codes
+
+        # Create a NumPy matrix from the DataFrame
+        data_matrix = samples_df[[sample_id_column, group_id_column, balance_column_id]].to_numpy()
+
+        category_counts_global = np.bincount(data_matrix[:, 2])  # Assuming organ_id is in the 3rd column
+        total_samples = len(data_matrix)
+        global_proportions = category_counts_global / total_samples
+
+        best_deviation = np.inf
+        best_assignment = None
+        
+        unique_groups = np.unique(data_matrix[:, 1])  # group_id is in the 2nd column
+        group_sizes = {group: (data_matrix[:, 1] == group).sum() for group in unique_groups}
+
+        deviation_search = np.zeros([iterations, 1])
+
+        for i in range(iterations):
+            np.random.shuffle(unique_groups)  # Shuffle groups to randomize distribution
+            group_plate_assignments = np.zeros(unique_groups.shape, dtype=int) - 1  # Initialize with -1
+            plate_samples_count = np.zeros(total_plates, dtype=int)
+
+            for group in unique_groups:
+                possible_plates = [plate for plate in range(total_plates) if plate_samples_count[plate] + group_sizes[group] <= max_samples_per_plate]
+                if possible_plates:
+                    chosen_plate = np.random.choice(possible_plates)
+                    group_plate_assignments[group] = chosen_plate
+                    plate_samples_count[chosen_plate] += group_sizes[group]
+
+            # Create a mapping from group IDs to plate assignments
+            group_to_plate_map = np.zeros(unique_groups.max() + 1, dtype=int) - 1
+            group_to_plate_map[unique_groups] = group_plate_assignments
+
+            # Vectorized assignment of samples to plates based on group ID
+            sample_plate_assignments = group_to_plate_map[data_matrix[:, 1].astype(int)]
+
+            # Handle any groups that might not have been assigned due to filtering or preprocessing
+            unassigned_mask = sample_plate_assignments == -1
+            if np.any(unassigned_mask):
+                # Handle unassigned samples; options might include assigning to a default plate or redistributing
+                sample_plate_assignments[unassigned_mask] = np.random.randint(0, total_plates, size=np.sum(unassigned_mask))
+
+            # Calculate variance of organ distribution across plates
+            deviation = calculate_abs_deviation(data_matrix[:, 2], sample_plate_assignments, total_plates, global_proportions)    
+            deviation_search[i] = deviation 
+            if deviation < best_deviation:
+                best_deviation = deviation
+                best_assignment = sample_plate_assignments
+
+        samples_df["assigned_plate"] = best_assignment
+        
+        return samples_df, deviation_search
+    
+    @staticmethod
+    def assign_plates_monte_carlo_cramer(
+        samples_df: pd.DataFrame,
+        sample_id_column: str,
+        balance_column: str,
+        max_samples_per_plate,
+        group_id_column: str = None,
+        iterations=1000,
+        output_search_traj=False) -> pd.DataFrame:
+
+        def calculate_cramers_v(observed_counts):
+            chi2, p, dof, _ = chi2_contingency(observed_counts)
+            n = np.sum(observed_counts)  # Total number of samples
+            cramers_v = np.sqrt(chi2 / (n * (min(observed_counts.shape) - 1)))
+            
+            return cramers_v, chi2, p
+
+        def calculate_observed_expected_counts(category_ids, plate_assignments, total_plates, global_proportions):
+            observed_counts = np.zeros((len(global_proportions), total_plates))
+            total_category_samples = len(category_ids)
+            expected_counts = global_proportions[:, None] * (total_category_samples / total_plates)
+
+            for plate in range(total_plates):
+                plate_mask = plate_assignments == plate
+                for category_id in range(len(global_proportions)):
+                    observed_counts[category_id, plate] = np.sum(category_ids[plate_mask] == category_id)
+
+            return observed_counts, expected_counts
+
+        # Use index if samples are not grouped in blocks
+        if group_id_column is None:
+            samples_df = samples_df.reset_index()
+            group_id_column = "index"
+
+        # Calculate the required number of plates based on max_samples_per_plate
+        total_samples = len(samples_df)
+        total_plates = np.ceil(total_samples / max_samples_per_plate).astype(int)  # Ceiling division to ensure enough plates
+
+        samples_df = samples_df.copy()
+
+        # Code categories to be balanced
+        balance_column_id = f"{balance_column}_id"
+        samples_df[balance_column_id] = samples_df[balance_column].astype('category').cat.codes
+
+        # Create a NumPy matrix from the DataFrame
+        data_matrix = samples_df[[sample_id_column, group_id_column, balance_column_id]].to_numpy()
+
+        category_counts_global = np.bincount(data_matrix[:, 2], minlength=len(samples_df[balance_column_id].unique()))  # Assuming organ_id is in the 3rd column
+        total_samples = len(data_matrix)
+        global_proportions = category_counts_global / total_samples
+
+        best_cramers_v = 1 
+        best_chi2 = None
+        best_p = 0
+
+        if output_search_traj:
+            cramers_phi_trials = []
+            chi2_trials = []
+            p_trials = []
+
+        best_assignment = None
+
+        unique_groups = np.unique(data_matrix[:, 1])  # group_id is in the 2nd column
+        group_sizes = {group: (data_matrix[:, 1] == group).sum() for group in unique_groups}
+
+        for i in range(iterations):
+            np.random.shuffle(unique_groups)  # Shuffle groups to randomize distribution
+            group_plate_assignments = np.zeros(unique_groups.shape, dtype=int) - 1  # Initialize with -1
+            plate_samples_count = np.zeros(total_plates, dtype=int)
+
+            for group in unique_groups:
+                possible_plates = [plate for plate in range(total_plates) if plate_samples_count[plate] + group_sizes[group] <= max_samples_per_plate]
+                if possible_plates:
+                    chosen_plate = np.random.choice(possible_plates)
+                    group_plate_assignments[group] = chosen_plate
+                    plate_samples_count[chosen_plate] += group_sizes[group]
+
+            # Create a mapping from group IDs to plate assignments
+            group_to_plate_map = np.zeros(unique_groups.max() + 1, dtype=int) - 1
+            group_to_plate_map[unique_groups] = group_plate_assignments
+
+            # Vectorized assignment of samples to plates based on group ID
+            sample_plate_assignments = group_to_plate_map[data_matrix[:, 1].astype(int)]
+
+            observed_counts, expected_counts = calculate_observed_expected_counts(data_matrix[:, 2], sample_plate_assignments, total_plates, global_proportions)
+            cramers_v, chi2, p = calculate_cramers_v(observed_counts)
+
+            if output_search_traj:
+                cramers_phi_trials.append(cramers_v)
+                chi2_trials.append(chi2)
+                p_trials.append(p)
+
+
+            if cramers_v < best_cramers_v:
+                best_cramers_v = cramers_v
+                best_chi2 = chi2
+                best_p = p
+
+                best_assignment = sample_plate_assignments
+
+        samples_df["assigned_plate"] = best_assignment
+
+        best_metrics = {
+            "cramers_phi": best_cramers_v,
+            "chi2": best_chi2,
+            "p": best_p,
+        }
+
+        if output_search_traj:
+            best_metrics["cramers_phi_trials"] = cramers_phi_trials
+            best_metrics["chi2_trials"] = chi2_trials
+            best_metrics["p_trials"] = p_trials
+
+        return samples_df, best_metrics
+    
+
+    @staticmethod
+    def assign_plates_sort(
+            samples_df: pd.DataFrame,
+            balance_columns: list,
+            max_samples_per_plate: int,
+            group_id_col: str = None,
+            full_plate: bool = False
+        ):
+
+        if group_id_col is None:
+            samples_df = samples_df.reset_index()
+            group_id_col = "index"
+
+        # columns that will be added
+        group_size_col = "group_size"
+        assigned_plate_col = "assigned_plate"
+
+        # group size 
+        samples_df[group_size_col] = samples_df.groupby(group_id_col)[group_id_col].transform("count")
+
+        # group ids
+        groups = samples_df[group_id_col].unique()
+
+        # Number of plates needed
+        n_plates = -(-samples_df.shape[0] // max_samples_per_plate)
+
+        # STEP 1: Sort dataframe based on groups and variables to be balanced
+        samples_df = samples_df.set_index(group_id_col)
+
+        samples_df = samples_df.sort_values(by=[group_size_col, *balance_columns])
+        samples_df = samples_df.reset_index(drop=False)
+        
+        # STEP 2: assign samples to plates
+        sublists = [[] for _ in range(n_plates)] 
+        for i, group in enumerate(groups):
+            df_group = samples_df[samples_df[group_id_col] == group]
+            sublists[i % n_plates].append(df_group)
+
+        # concatenate to one df per plate
+        batches_df = []
+        for df_i in sublists:
+            batches_df.append(pd.concat(df_i) )
+
+        # permute the plate order
+        np.random.shuffle(batches_df)
+
+        # add plate id column
+        for i, df in enumerate(batches_df):
+            df[assigned_plate_col] = i
+            batches_df[i] = df
+
+
+        # Shuffle groups within each assigned plate
+        shuffled_df = pd.DataFrame()
+        for i, df in enumerate(batches_df):
+
+            unique_groups_in_plate = df[group_id_col].unique()
+            np.random.shuffle(unique_groups_in_plate)
+            
+            # Concatenating shuffled groups
+            shuffled_plate_df = pd.concat([df[df[group_id_col] == group] for group in unique_groups_in_plate])
+
+            batches_df[i] = shuffled_plate_df
+
+            shuffled_df = pd.concat([shuffled_df, shuffled_plate_df])
+
+        samples_df = shuffled_df.reset_index(drop=True)
+
+
+        return samples_df
+
+
+    
+    
+    
+    @staticmethod
+    def assign_plates_ilp(
+            samples_df: pd.DataFrame,
+            balance_columns: list,
+            max_samples_per_plate: int,
+            group_column: str = None,
+            tolerance: Union[int, str] = None,
+            full_plate: bool = False
+        ) -> Tuple[pd.DataFrame, int]:
+
+        samples_df = samples_df.copy()
+
+        if group_column is None:
+            samples_df = samples_df.reset_index()
+            group_column = "index"
+
+        if tolerance is None:
+            tolerance = "group_min"
+
+        if isinstance(tolerance, str):
+            if not tolerance in ["group_avg", "group_min"]:
+                raise ValueError(f"Tolerance mode {tolerance} not available. Current modes: 'group'")
+
+
+        # Calculate the required number of plates
+        total_samples = len(samples_df)
+        total_plates = -(-total_samples // max_samples_per_plate)
+
+        # Calculate the total capacity of all full plates
+        full_plate_count = total_samples // max_samples_per_plate if full_plate else 0
+        remaining_plates = total_plates - full_plate_count
+        full_plate_count = total_samples // max_samples_per_plate
+
+        logger.info(f"Number of samples: {total_samples}")
+        logger.info(f"Max samples per plate: {max_samples_per_plate}")
+
+        logger.info(f"Total plates needed: {total_plates}")
+        logger.info(f"Fill plates: {full_plate}")
+        logger.info(f"Full plates count: {full_plate_count}")
+
+
+        # Initialize the ILP problem
+        linprob = lp.LpProblem("GroupedBalanceDistribution", lp.LpMinimize)
+
+        # Permute sample groups for randomness
+        unique_groups = samples_df[group_column].unique()
+        np.random.shuffle(unique_groups)
+
+        # Define binary decision variables for group-to-plate assignments
+        assign_group = lp.LpVariable.dicts("assignGroup",
+                                           (unique_groups, range(total_plates)),
+                                           cat='Binary')
+
+        # Ensure each group is assigned to exactly one plate
+        for g in unique_groups:
+            linprob += lp.lpSum(assign_group[g][p] for p in range(total_plates)) == 1, f"Group_{g}_SingleAssignment"
+
+        # Handling full plates if enabled
+        if full_plate:
+            
+            # For <full_plate_count> plates,  apply full plate constraint 
+            for p in range(full_plate_count):
+                linprob += lp.lpSum(assign_group[g][p] * len(samples_df[samples_df[group_column] == g]) for g in unique_groups) == max_samples_per_plate, f"FullPlate_{p}"
+
+        else:
+            # For all plates, apply less than or equal max samples per plate constraint
+            for p in range(total_plates):
+                linprob += lp.lpSum(assign_group[g][p] * len(samples_df[samples_df[group_column] == g]) for g in unique_groups) <= max_samples_per_plate, f"MaxPlate_{p}"
+
+
+        # Balance constraints
+        for balance_column in balance_columns:
+
+            balance_categories = samples_df[balance_column].unique()
+
+            # Calculate category counts and proportions
+            category_counts = samples_df[balance_column].value_counts()
+            category_proportions = samples_df[balance_column].value_counts(normalize=True)
+
+            logger.debug(f"Category counts: {category_counts}")
+
+            expected_full_plate_counts = category_proportions * max_samples_per_plate
+
+            remaining_sample_counts = category_counts - expected_full_plate_counts * full_plate_count
+            expected_remaining_plate_counts = remaining_sample_counts / remaining_plates if remaining_plates > 0 else 0
+
+            expected_equal_plate_counts = category_counts / total_plates
+    
+
+            # Combine expected allocations for full and remaining plates
+            expected_per_plate = {
+                'full': expected_full_plate_counts,
+                'remaining': expected_remaining_plate_counts,
+                'equal': expected_equal_plate_counts
+            }
+
+            logger.debug(f"Category counts: {expected_per_plate}")
+
+            all_category_tolerances = []
+
+            for category in balance_categories:
+
+                category_groups = samples_df[samples_df[balance_column] == category][group_column].unique()
+                
+                for p in range(total_plates):
+                    if full_plate:
+                        plate_type = 'full' if p < full_plate_count else 'remaining'
+                    else:
+                        plate_type = 'equal'
+
+                    expected_allocation = int(np.round(expected_per_plate[plate_type][category]))
+
+                    match tolerance:
+                        case "group_avg":
+                            category_tolerance = samples_df[samples_df[balance_column] == category].groupby(group_column).size().mean()
+
+                        case "group_min":
+                            category_tolerance = samples_df[samples_df[balance_column] == category].groupby(group_column).size().min()
+
+                        case _:
+                            category_tolerance = tolerance
+            
+                    category_tolerance = int(category_tolerance)
+
+                    all_category_tolerances.append(category_tolerance)
+
+                    minbound = expected_allocation - category_tolerance
+                    maxbound = expected_allocation + category_tolerance
+
+                    linprob += lp.lpSum(assign_group[g][p] * len(samples_df[samples_df[group_column] == g]) for g in category_groups) >= int(minbound), f"Min_{balance_column}_{category}_{p}_{plate_type}"
+                    linprob += lp.lpSum(assign_group[g][p] * len(samples_df[samples_df[group_column] == g]) for g in category_groups) <= int(maxbound), f"Max_{balance_column}_{category}_{p}_{plate_type}"
+
+            logger.debug(f"Category tolerances for {balance_column}")
+            logger.debug(f"Min tolerances used: {min(all_category_tolerances)}")
+            logger.debug(f"Max tolerances used: {max(all_category_tolerances)}")
+
+        # Solve the problem
+        linprob.solve()
+
+        wall_time = linprob.solutionTime
+
+        if linprob.sol_status != lp.LpStatusOptimal:
+            logger.error(f"Solver could not distribute samples to plates within defined constraints.")
+            sol_status = False
+        else:
+            logger.info("Optimal solution found")
+            logger.info(f"PuLP solver wall time: {wall_time}")
+            sol_status = True
+            
+        # Extract group assignments and update the DataFrame
+        group_assignments = {g: p for g in unique_groups for p in range(total_plates) if lp.value(assign_group[g][p]) == 1}
+        samples_df['assigned_plate'] = samples_df[group_column].map(group_assignments)
+
+        # Shuffle groups within each assigned plate
+        shuffled_df = pd.DataFrame()
+        for plate in range(total_plates):
+            plate_df = samples_df[samples_df['assigned_plate'] == plate]
+            unique_groups_in_plate = plate_df[group_column].unique()
+            np.random.shuffle(unique_groups_in_plate)
+            
+            # Concatenating shuffled groups
+            shuffled_plate_df = pd.concat([plate_df[plate_df[group_column] == group] for group in unique_groups_in_plate])
+            shuffled_df = pd.concat([shuffled_df, shuffled_plate_df])
+
+        samples_df = shuffled_df.reset_index(drop=True)
+
+        return samples_df, sol_status
+    
+    @staticmethod
+    def create_blocks_within_plate_ilp(
+        samples_df,
+        blocking_column,
+        group_column,
+        initial_tolerance=0,
+        max_attempts=20,
+        block_shuffle=True
+    ) -> Tuple[pd.DataFrame, int]:
+
+        def find_whole_number_ratios(distribution):
+            decimal_places = 1
+            while True:
+                rounded_distribution = {k: round(v, decimal_places) for k, v in distribution.items()}
+                base = 10 ** decimal_places
+                ratios = {k: int(v * base) for k, v in rounded_distribution.items()}
+                if all(ratio == round(ratio) for ratio in ratios.values()):
+                    gcd = np.gcd.reduce(list(ratios.values()))
+                    normalized_ratios = {k: v // gcd for k, v in ratios.items()}
+                    return normalized_ratios
+                decimal_places += 1
+
+        # Ensure group_column is in DataFrame
+        if group_column not in samples_df.columns:
+            raise ValueError(f"{group_column} is not a column in the DataFrame")
+        
+        logger.debug(f"Blocking variable: {blocking_column} ")
+
+        # Get proportions of each category and calculate ratios
+        category_counts = samples_df[blocking_column].value_counts(normalize=False)
+        category_proportions = samples_df[blocking_column].value_counts(normalize=True)
+
+        block_ratios = find_whole_number_ratios(category_proportions)
+
+        logger.debug(f"Category counts in plate: {category_counts}")
+        logger.debug(f"Total number of samples: {category_counts.sum()}")
+
+        logger.debug(f"Category proportions in plate: {category_proportions}")
+        logger.debug(f"Ideal ratios in each block: {block_ratios}")
+
+        basic_block_size = sum(block_ratios.values())
+
+        # Get number of samples in each group 
+        group_sizes = samples_df.groupby(group_column).size()
+        group_size = int(group_sizes.max())
+
+        logger.debug(f"Max sample group size: {group_size}")
+
+        block_size = basic_block_size * group_size
+
+        block_ratios_list = []
+        for key, val in category_counts.items():
+            ratio = block_ratios[key]
+            block_ratios_list.append(val / (ratio * group_size))
+
+        full_blocks = int(np.floor(min(block_ratios_list)))
+
+        logger.debug(f"Number of blocks with ideal ratios: {full_blocks}")
+
+        # Group the samples
+        grouped_samples = samples_df.groupby(group_column)
+
+        num_blocks = int(np.ceil(len(samples_df) / block_size))
+
+        attempt = 0
+
+        tolerance = initial_tolerance
+        solution_found = False
+
+        while not solution_found and attempt < max_attempts:
+            # Reinitialize the ILP problem for each attempt
+            prob = lp.LpProblem("GroupedBlockCreation", lp.LpMinimize)
+            
+            # Define binary decision variables
+            group_ids = grouped_samples.groups.keys()
+
+            assign_group = lp.LpVariable.dicts("AssignGroup", [(group_id, j) for group_id in group_ids for j in range(num_blocks)], cat='Binary')
+
+            try:
+                # Constraint: Each group should be assigned to exactly one block
+                for group_id in group_ids:
+                    prob += lp.lpSum(assign_group[(group_id, j)] for j in range(num_blocks)) == 1
+
+                # Constraint: Each block should have at most the specified number of samples
+                for j in range(num_blocks):
+                    prob += lp.lpSum(assign_group[(group_id, j)] * len(grouped_samples.get_group(group_id)) for group_id in group_ids) <= block_size
+
+                # Adjusted constraints for the blocks with expected ratios
+                for j in range(full_blocks):
+                    for category, count in category_counts.items():
+                        cat_groups = samples_df[samples_df[blocking_column] == category].groupby(group_column)
+                        cat_group_ids = cat_groups.groups.keys()
+
+                        # Adjusted constraint considering tolerance
+                        required_groups = block_ratios[category]
+                        prob += lp.lpSum(assign_group[(group_id, j)] for group_id in cat_group_ids) >= required_groups 
+                        prob += lp.lpSum(assign_group[(group_id, j)] for group_id in cat_group_ids) <= required_groups
+
+                # # Adjusted constraints for the non-ideal blocks
+                # for j in range(full_blocks, num_blocks):
+                #     for category, count in category_counts.items():
+                #         cat_groups = samples_df[samples_df[blocking_column] == category].groupby(group_column)
+                #         cat_group_ids = cat_groups.groups.keys()
+                #         required_groups = block_ratios[category]
+
+                #         # Apply tolerance
+                #         min_bound = max(0, required_groups - tolerance) # Ensures lower bound is not negative
+                #         max_bound = required_groups + tolerance
+
+                #         prob += lp.lpSum(assign_group[(group_id, j)] for group_id in cat_group_ids) >= min_bound
+                #         prob += lp.lpSum(assign_group[(group_id, j)] for group_id in cat_group_ids) <= max_bound
+
+                prob.solve()
+            except Exception as e:
+                print(e)
+
+            if prob.sol_status == 1:  # Check if the solution is optimal
+                solution_found = True
+            else:
+                tolerance += 1  # Increase tolerance for the next attempt
+                attempt += 1
+
+            if not solution_found:
+                logger.error("Failed to find an optimal solution within the maximum number of attempts.")
+                samples_df['assigned_block'] = 0
+                return samples_df, prob.sol_status
+            
+        logger.info(f"Solution found using tolerance = {tolerance}")
+        
+        # Extract group assignments and update the DataFrame
+        group_block_assignments = {group_id: j for group_id in group_ids for j in range(num_blocks) if lp.value(assign_group[(group_id, j)]) == 1}
+        samples_df['assigned_block'] = samples_df[group_column].map(group_block_assignments)
+        
+        samples_df=samples_df.sort_values(by=['assigned_block', group_column])
+
+        if block_shuffle:
+            # Shuffle samples within each block
+            block_shuffled_df = pd.DataFrame()
+
+            logger.info(f"Randomizing sample order within each block")
+
+            for block in samples_df['assigned_block'].unique():
+                block_df = samples_df[samples_df['assigned_block'] == block].copy()
+                block_df = block_df.sample(frac=1).reset_index(drop=True)  # Shuffle the block
+                block_shuffled_df = pd.concat([block_shuffled_df, block_df], ignore_index=True)
+            samples_df =  block_shuffled_df
+
+        samples_df = samples_df.reset_index(drop=True)
+        
+        return samples_df, prob.sol_status
+
+   
     def randomize_order(self, case_control : bool = None, reproducible=True) -> None:
         """
         Randomizes the order of specimen records in the study, optionally maintaining group integrity.
@@ -719,43 +1409,29 @@ class Study:
         distribution = df[attribute].value_counts(normalize=normalize)
         return distribution
 
-    def randomize_with_uniformity_check(self, case_control, attribute, samples_per_plate, uniformity_criterion, max_attempts = 10, reproducible=False):
-        attempt = 0
-        while attempt < max_attempts:
-            self.randomize_order(case_control, reproducible)
-            if self._uniformity_within_tolerance(attribute, samples_per_plate, uniformity_criterion):
-                return
-            attempt += 1
-        raise Exception(f"Unable to achieve uniform distribution after {max_attempts} attempts")
     
-    def _uniformity_within_tolerance(self, attribute, block_size, tolerance):
-        overall_distribution = self._get_attribute_distribution(self.sample_records_df, attribute)
-        for start_idx in range(0, len(self.sample_records_df), block_size):
-            end_idx = start_idx + block_size
-            block = self.sample_records_df.iloc[start_idx:end_idx]
-            block_distribution = block[attribute].value_counts(normalize=True)
-
-            if not self._meets_criterion(block_distribution, overall_distribution, tolerance):
-                return False
-        return True
-
-    def _meets_criterion(self, block_distribution, overall_distribution, tolerance):
-        for category in overall_distribution.index:
-            overall_percent = overall_distribution[category] * 100
-            block_percent = block_distribution.get(category, 0) * 100  # Default to 0 if category not in block
-            if abs(block_percent - overall_percent) > tolerance:
-                return False
-        return True
-    
-    def get_attribute_plate_distributions(self, attribute, ignore_nans=True, normalize=True) -> dict:
+    def get_attribute_plate_distributions(self, attribute, ignore_nans=True, normalize=True, long_format=True) -> dict:
         plate_distributions = {}
 
         for plate in self.plates:
             df = plate.as_dataframe()
-            distribution = self._get_attribute_distribution(df, attribute, ignore_nans, normalize)
+            distribution = self._get_attribute_distribution(df, attribute, ignore_nans, False)
             plate_distributions[plate.plate_id] = distribution
 
-        return plate_distributions
+        df = pd.DataFrame(plate_distributions).fillna(0)
+
+        if normalize:
+            # Calculate the sum of counts for each category across all plates
+            category_totals = df.sum(axis=1)
+            # Normalize the data frame by dividing by the category totals
+            df = df.div(category_totals, axis=0) * 100
+
+        if long_format:
+            value_name = "Percentage" if normalize else "Counts"
+            df = df.reset_index().melt(id_vars=attribute, var_name='Plate', value_name=value_name)
+    
+
+        return df
     
     def plot_attribute_plate_distributions(self, attribute, normalize=False, colormap='tab20b', plt_style="ggplot"):
         """
@@ -778,15 +1454,7 @@ class Study:
             matplotlib.figure.Figure: The figure object containing the bar chart.
         """
 
-        distributions = self.get_attribute_plate_distributions(attribute=attribute, normalize=False)
-
-        # Convert the dictionary to a DataFrame and rename columns
-        df = pd.DataFrame(distributions)
-        df.columns = [f"plate_{key}" for key in distributions.keys()]
-
-        if normalize:
-            # Normalize each column to sum to 100%
-            df = df.div(df.sum(axis=1), axis=0) * 100
+        df = self.get_attribute_plate_distributions(attribute=attribute, normalize=normalize, long_format=False)
 
         # Plotting the stacked bar chart
         plt.style.use(plt_style)
@@ -808,6 +1476,38 @@ class Study:
 
         return fig
     
+    def plot_attribute_distributions_plotly(
+            self,
+            attribute,
+            normalize=True,
+            barmode = "stack",
+            title=None):
+
+        df = self.get_attribute_plate_distributions(attribute, ignore_nans=True, normalize=True)
+
+        if normalize:
+            df['PercentageText'] = df['Percentage'].apply(lambda x: f"{x:.1f}%")  # Adjust decimal places as needed
+
+        if title is None:
+            title = f"{attribute} distributions across plates"
+
+        fig = px.bar(df, x='organ', y='Percentage', color='Plate', text='PercentageText',
+                    title=title, labels={'index': attribute, 'Percentage': 'Percentage (%)'},
+                    barmode=barmode, height=400)
+
+        # Update layout for clarity
+        fig.update_layout(xaxis_title=attribute,
+                        yaxis_title='Percentage (%)' if normalize else 'Count',
+                        legend_title="Plate ID",
+                        template="plotly_white"
+                        )
+
+        # color_discrete_sequence=px.colors.sequential.Agsunset
+
+        fig.update_traces(textposition='outside')
+
+        return fig
+
     def to_dict(self) -> dict:
         study_dict = {
             "name": self.name,
@@ -818,12 +1518,107 @@ class Study:
         return study_dict
     
     def dict_to_study(study_dict: dict) -> 'Study':
-        study = Study(study_name=study_dict.get("name"))
+        study = Study(name=study_dict.get("name"))
         study.plates = [PlateFactory.dict_to_plate(plate_data) for plate_data in study_dict.get("plates", [])]
         study.total_plates = study_dict.get("total_plates", 0)
         study.sample_records_df = pd.DataFrame(study_dict.get("sample_records_df", {}))
         return study
     
 
+    @staticmethod
+    def report_plate_imbalance(df, plate_assign_col, category_col):
+        df = df.dropna()
+        categories = df[category_col].unique()
+        plates = df[plate_assign_col].unique()
+        plate_cat_residuals_dict = {}
 
-                
+        for category in categories:
+            total_samples_in_category = len(df[df[category_col] == category])
+            expected_frequency = np.round(total_samples_in_category / len(plates))
+           
+            # Initialize a dict to hold observed frequencies for each plate with default of 0
+            observed_frequency_dict = dict.fromkeys(plates, 0)
+            # Update with actual observed frequencies
+            observed_frequencies = df[df[category_col] == category][plate_assign_col].value_counts()
+            for plate, count in observed_frequencies.items():
+                observed_frequency_dict[plate] = count
+
+            # Convert to list ensuring all plates are represented
+            observed_frequency_list = [observed_frequency_dict[plate] for plate in plates]
+
+            # Calculate residuals
+            plate_category_residuals = [abs(of - expected_frequency) for of in observed_frequency_list]
+            plate_cat_residuals_dict[category] = plate_category_residuals
+
+        imbalance_df = pd.DataFrame(plate_cat_residuals_dict)
+        mar = imbalance_df.mean(axis=1)
+        sar = imbalance_df.sum(axis=1)
+        max_ar = imbalance_df.max(axis=1)
+
+        imbalance_df.insert(0, "plate", value=imbalance_df.index.values)
+        imbalance_df['mean'] = mar
+        imbalance_df['sum'] = sar
+        imbalance_df['max'] = max_ar
+
+        return imbalance_df
+    
+    
+    def plate_balance_chi_square_test(self, plate_assign_col, category_columns, exclude_plates = None):
+        """
+        The commonly accepted rule of thumb is that a chi2 test may not be reliable if more than 20% of the expected frequencies are less than 5, or any expected frequencies are less than 1.
+        """
+
+        df = self.to_dataframe().dropna()
+
+        if exclude_plates is not None:
+            df = df[~df[plate_assign_col].isin(exclude_plates)]
+
+        all_observed_frequencies = []
+        all_expected_frequencies = []
+
+        total_samples = len(df)
+        total_plates = len(df[plate_assign_col].unique())
+
+        for category_col in category_columns:
+            levels = df[category_col].unique()
+            
+            for level in levels:
+                level_df = df[df[category_col] == level]
+                total_samples_in_level = len(level_df)
+
+                expected_frequency = total_samples_in_level / total_plates
+                expected_frequencies = [expected_frequency] * total_plates
+                all_expected_frequencies.extend(expected_frequencies)
+
+                observed_frequencies = level_df[plate_assign_col].value_counts().sort_index().values
+                observed_frequencies = np.array(observed_frequencies if len(observed_frequencies) == total_plates else np.append(observed_frequencies, [0] * (total_plates - len(observed_frequencies))))
+                all_observed_frequencies.extend(observed_frequencies)
+
+        all_observed_frequencies = np.reshape(all_observed_frequencies, (len(all_expected_frequencies) // total_plates, total_plates))
+        
+        all_expected_frequencies = np.reshape(all_expected_frequencies, all_observed_frequencies.shape)
+
+        chi2, p, dof, expected = chi2_contingency(all_observed_frequencies)
+
+        n = np.sum(all_observed_frequencies)  # Total number of samples
+        r = all_observed_frequencies.shape[0]  # Number of rows (categories and levels combined)
+        c = total_plates  # Number of columns (plates)
+        
+        cramer_v = np.sqrt(chi2 / (n * (min(r - 1, c - 1))))
+
+        low_expected_count = sum([freq < 5 for freq in all_expected_frequencies.flatten()])
+        warning_message = ""
+        if low_expected_count > 0.2 * len(all_expected_frequencies.flatten()) or min(all_expected_frequencies.flatten()) < 1:
+            warning_message = "Warning: Chi-squared test may not be reliable."
+
+        return {
+            'chi2': chi2,
+            'p_value': p,
+            'cramer_v': cramer_v,
+            'warning': warning_message
+        }
+    
+    
+
+
+                    
